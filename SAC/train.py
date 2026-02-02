@@ -2,11 +2,9 @@
 
 import gymnasium as gym
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
-import time
+import time, torch
 
-import torch
-
-from PPO.agent import PPOagent
+from SAC.agent import SACagent
 from trpo.utility import GAE_compute
 
 
@@ -42,8 +40,8 @@ if __name__ == "__main__":
         observation, info = env.reset()
 
          
-
-
+        EPOCH_NUM = 1000
+        NUM_STEP = 1000
         for i in range(200):
             action = env.action_space.sample() 
             observation, reward, terminated, truncated, info = env.step(action)
@@ -64,36 +62,27 @@ if __name__ == "__main__":
             
             time.sleep(0.02) # Slow it down slightly to see the numbers
 
-
-        agent = PPOagent()
+        agent = SACagent()
         for epoch in range(EPOCH_NUM):
             obs, info = env.reset()
             ep_reward = 0
+            
             for _ in range(NUM_STEP):
-                # use the observation to seleect act
                 obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
                 action, log_prob = agent.select_action(obs_tensor)
 
-                # env step
                 next_obs, rew, term, trunc, info = env.step(action.item())
                 done = term or trunc
-                agent.rollout.store((obs, action, reward, 1 - done, log_prob))
+                
+                agent.replay_buffer.store(obs, action, reward, next_obs, 1- done)
 
                 obs = next_obs
                 ep_reward += reward
                 if done:
                     obs, info = env.reset()
-
-                # store in rollout with the r
-            states, actions, old_log_probs, rewards, masks = agent.rollout.retrieve()
+            
+            
+            states, actions,rewards, next_states, masks = agent.replay_buffer.sample()
+            
             targets, advantages = GAE_compute(agent, states, rewards, masks)
             
-            # Update actor
-            agent.actor_update(states, actions, advantages, old_log_probs)
-
-            # Update critic
-            critic_loss = agent.critic_update(states, targets)
-
-            agent.rollout.clear()
-        
-        env.close()

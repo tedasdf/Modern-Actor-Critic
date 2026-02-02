@@ -31,7 +31,10 @@ class PPOagent():
         return ratios, advantages
     
     def loss_clip(self, ratios, advantages ):
-        return torch.min(ratios* advantages, torch.clip(ratios, 1 - self.epsilon , 1 + self.epsilon) * advantages)
+      return torch.min(ratios* advantages, torch.clip(ratios, 1 - self.epsilon , 1 + self.epsilon) * advantages)
+
+    def loss_adaptive(self):
+        raise ValueError
 
     def actor_update(self, states, actions, advantages, old_log_probs, n_cg_steps=10):
         ratios , advantages = self.compute_surrogate_loss(states, actions, advantages, old_log_probs)
