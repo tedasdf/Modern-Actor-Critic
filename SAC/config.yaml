@@ -1,0 +1,9 @@
+agent_continuous:
+  _target_: agent.SACagent
+  hidden_size: 256
+  alpha: 0.2      # continuous environment
+  gamma: 0.99
+  tau: 0.005
+  act_lr: 3e-4
+  state_lr: 3e-4
+  state_act_lr: 3e-4

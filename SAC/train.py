@@ -2,10 +2,64 @@
 
 import gymnasium as gym
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
-import time, torch
+import time, torch, OmegaConf
+from utilities.base import replay_to_tensor
 
+from hydra.utils import instantiate
 from SAC.agent import SACagent
-from trpo.utility import GAE_compute
+
+def train(env, epoch_num, num_step):
+    
+    obs_dim = env.observation_space.shape[0]
+    act_dim = env.action_space.shape[0] if hasattr(env.action_space, 'shape') else env.action_space.n
+    
+    cfg = OmegaConf.load('SAC\config.yaml')
+    
+    agent = instantiate(
+        cfg.agent_continuous,  # or cfg.agent_discrete
+        obs_dim=obs_dim,
+        act_dim=act_dim
+    )
+    
+    for epoch in range(epoch_num):
+        obs, info = env.reset()
+        ep_reward = 0
+        
+        for _ in range(num_step):
+            obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
+            action = agent.select_action(obs_tensor)
+
+            next_obs, rew, term, trunc, info = env.step(action.item())
+            done = term or trunc
+            
+            agent.replay_buffer.store(obs, action, rew, next_obs, 1- done)
+
+            obs = next_obs
+            ep_reward += rew
+            if done:
+                obs, info = env.reset()
+        
+        if agent.replay_buffer.check_length():
+
+            obs, actions,rewards, next_obs, masks = agent.replay_buffer.sample()
+            obs_tensor, actions_tensor, rewards_tensor, next_obs_tensor, masks_tensor = replay_to_tensor(obs, actions, rewards, next_obs, masks)
+
+            v_loss = agent.update_v(obs_tensor)
+            q_loss = agent.update_q(obs_tensor, actions_tensor, rewards_tensor, next_obs_tensor, masks_tensor)
+            policy_loss = agent.update_policy(obs_tensor)
+
+            # manually step
+            agent.v_opt.zero_grad()
+            v_loss.backward()
+            agent.v_opt.step()
+
+            agent.q_opt.zero_grad()
+            q_loss.backward()
+            agent.q_opt.step()
+
+            agent.act_opt.zero_grad()
+            policy_loss.backward()
+            agent.act_opt.step()
 
 
 if __name__ == "__main__":
@@ -15,8 +69,8 @@ if __name__ == "__main__":
     ]
 
     EPOCH_NUM = 1000
-    NUM_STEP = 5
-
+    NUM_STEP = 1000
+    
     for env_spec in envs_to_test:
         print(f"\n--- Starting Environment: {env_spec['id']} ---")
         
@@ -37,52 +91,8 @@ if __name__ == "__main__":
         else:
             print(f"Vector-based state. Observation shape: {obs_shape}")
 
+        train(env)
         observation, info = env.reset()
 
          
-        EPOCH_NUM = 1000
-        NUM_STEP = 1000
-        for i in range(200):
-            action = env.action_space.sample() 
-            observation, reward, terminated, truncated, info = env.step(action)
-            
-            
-            # --- SEE THE FRAME/STATE DATA ---
-            if is_image:
-                # If it were an image, we print the mean pixel intensity
-                print(f"Step {i:3}: Image mean brightness: {np.mean(observation):.2f}", end="\r")
-            else:
-                # For Pendulum/Lander, we print the raw vector
-                # np.array2string makes it pretty for the terminal
-                obs_str = np.array2string(observation, precision=3, suppress_small=True)
-                print(f"Step {i:3}: State {obs_str}", end="\r")
-
-            if terminated or truncated:
-                observation, info = env.reset()
-            
-            time.sleep(0.02) # Slow it down slightly to see the numbers
-
-        agent = SACagent()
-        for epoch in range(EPOCH_NUM):
-            obs, info = env.reset()
-            ep_reward = 0
-            
-            for _ in range(NUM_STEP):
-                obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
-                action, log_prob = agent.select_action(obs_tensor)
-
-                next_obs, rew, term, trunc, info = env.step(action.item())
-                done = term or trunc
-                
-                agent.replay_buffer.store(obs, action, reward, next_obs, 1- done)
-
-                obs = next_obs
-                ep_reward += reward
-                if done:
-                    obs, info = env.reset()
-            
-            
-            states, actions,rewards, next_states, masks = agent.replay_buffer.sample()
-            
-            targets, advantages = GAE_compute(agent, states, rewards, masks)
-            
+        

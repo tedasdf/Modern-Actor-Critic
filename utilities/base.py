@@ -25,14 +25,19 @@ def GAE_compute(agent, states, rewards, masks):
     return targets, advantages
 
 
-def boostrapping(agent, rewards, next_values, masks):
 
-    value = torch.zeros_like(rewards)
-    delta = 0
-    for t in reversed(range(len(rewards))):
-        delta = rewards[t] + agent.gamma*next_values[t]*masks[t]
-
-        value[t] = delta
-
-
+def replay_to_tensor(states, actions, rewards, next_states, dones, device=None):
+    device = device or torch.device("cpu")
     
+    states_tensor = torch.tensor(states, dtype=torch.float32, device=device)
+    next_states_tensor = torch.tensor(next_states, dtype=torch.float32, device=device)
+    rewards_tensor = torch.tensor(rewards, dtype=torch.float32, device=device).unsqueeze(1)
+    dones_tensor = torch.tensor(dones, dtype=torch.float32, device=device).unsqueeze(1)
+    
+    # Handle discrete vs continuous actions
+    if len(actions.shape) == 1:
+        actions_tensor = torch.tensor(actions, dtype=torch.long, device=device)
+    else:
+        actions_tensor = torch.tensor(actions, dtype=torch.float32, device=device)
+    
+    return states_tensor, actions_tensor, rewards_tensor, next_states_tensor, dones_tensor
