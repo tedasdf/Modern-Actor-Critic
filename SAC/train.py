@@ -2,14 +2,17 @@
 
 import gymnasium as gym
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
-import time, torch, OmegaConf
-from utilities.base import replay_to_tensor
+import time, torch
+from omegaconf import OmegaConf
+from helper.base import replay_to_tensor
 
 from hydra.utils import instantiate
 from SAC.agent import SACagent
 
 def train(env, epoch_num, num_step):
-    
+    torch.autograd.set_detect_anomaly(True)
+
+
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0] if hasattr(env.action_space, 'shape') else env.action_space.n
     
@@ -17,8 +20,8 @@ def train(env, epoch_num, num_step):
     
     agent = instantiate(
         cfg.agent_continuous,  # or cfg.agent_discrete
-        obs_dim=obs_dim,
-        act_dim=act_dim
+        obs_dim=int(obs_dim),
+        act_dim=int(act_dim)
     )
     
     for epoch in range(epoch_num):
@@ -29,7 +32,9 @@ def train(env, epoch_num, num_step):
             obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
             action = agent.select_action(obs_tensor)
 
-            next_obs, rew, term, trunc, info = env.step(action.item())
+            action = action.detach().cpu().numpy().flatten()
+           
+            next_obs, rew, term, trunc, info = env.step(action)
             done = term or trunc
             
             agent.replay_buffer.store(obs, action, rew, next_obs, 1- done)
@@ -47,29 +52,30 @@ def train(env, epoch_num, num_step):
             v_loss = agent.update_v(obs_tensor)
             q_loss = agent.update_q(obs_tensor, actions_tensor, rewards_tensor, next_obs_tensor, masks_tensor)
             policy_loss = agent.update_policy(obs_tensor)
-
+            
             # manually step
             agent.v_opt.zero_grad()
-            v_loss.backward()
-            agent.v_opt.step()
-
             agent.q_opt.zero_grad()
-            q_loss.backward()
-            agent.q_opt.step()
-
             agent.act_opt.zero_grad()
+
+            q_loss.backward()
+            v_loss.backward()
             policy_loss.backward()
+
+            agent.q_opt.step()
+            agent.v_opt.step()
             agent.act_opt.step()
 
+            print(f"Epoch {epoch+1}/{epoch_num} | Reward: {ep_reward:.2f} | "
+                  f"V Loss: {v_loss:.4f} | Q Loss: {q_loss:.4f} | Policy Loss: {policy_loss:.4f}")
 
 if __name__ == "__main__":
     envs_to_test = [
         {"id": "Pendulum-v1", "kwargs": {}},
-        {"id": "LunarLander-v3", "kwargs": {"continuous": True}}
     ]
 
-    EPOCH_NUM = 1000
-    NUM_STEP = 1000
+    EPOCH_NUM = 10
+    NUM_STEP = 100
     
     for env_spec in envs_to_test:
         print(f"\n--- Starting Environment: {env_spec['id']} ---")
@@ -91,8 +97,7 @@ if __name__ == "__main__":
         else:
             print(f"Vector-based state. Observation shape: {obs_shape}")
 
-        train(env)
-        observation, info = env.reset()
+        train(env,EPOCH_NUM, NUM_STEP)
 
          
         

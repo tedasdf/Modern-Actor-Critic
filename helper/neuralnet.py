@@ -58,7 +58,7 @@ class Critic(nn.Module):
         )
 
     def forward(self, x):
-        value = self.critic(x)
+        value = self.network(x)
         return value
 
 
@@ -73,9 +73,8 @@ class StateValCritc(nn.Module):
             nn.Linear(hidden_size, 1)
         )
     def forward(self, state, action):
-        action_oneshot = F.one_hot(action, num_classes=self.act_dim).float()
-        x = torch.cat([state, action_oneshot])
-        return self.network(x).squeeze(-1)
+        x = torch.cat([state, action], dim=-1)
+        return self.network(x)
 
 
 
