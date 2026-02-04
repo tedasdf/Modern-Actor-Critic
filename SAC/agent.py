@@ -41,7 +41,7 @@ class SACagent():
         a, log_pi = self.actor.sample(obs)
         
         log_pi = log_pi.detach()
-
+        
         state_act_val = self.state_action_critic(obs,a)
 
         with torch.no_grad():

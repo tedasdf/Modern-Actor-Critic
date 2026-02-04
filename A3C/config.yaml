@@ -1,0 +1,5 @@
+agent_continuous:
+  _target_: A3C.agent.A3Cagent
+  hidden_dim: 256
+  gamma: 0.99
+  lr: 3e-4

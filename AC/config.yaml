@@ -1,0 +1,5 @@
+agent_continuous:
+  _target_: AC.agent.ACagent
+  hidden_dim: 256
+  gamma: 0.99
+  lr: 3e-4

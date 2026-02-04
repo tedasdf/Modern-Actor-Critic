@@ -1,20 +1,17 @@
 
-
-import gymnasium as gym
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
-import time, torch
+import gymnasium as gym
 from omegaconf import OmegaConf
-from helper.base import replay_to_tensor
-
 from hydra.utils import instantiate
+import torch
 
+from helper.base import compute_bootstrapping
 
 def train(env, epoch_num, num_step):
-
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0] if hasattr(env.action_space, 'shape') else env.action_space.n
     
-    cfg = OmegaConf.load('SAC\config.yaml')
+    cfg = OmegaConf.load('AC\config.yaml')
     
     agent = instantiate(
         cfg.agent_continuous,  # or cfg.agent_discrete
@@ -25,47 +22,49 @@ def train(env, epoch_num, num_step):
     for epoch in range(epoch_num):
        
         ep_reward = 0
+        rollout = []
         
         for _ in range(num_step):
             obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
-            action = agent.select_action(obs_tensor)
+            action, log_prob, entropy = agent.select_action(obs_tensor)
 
-            action = action.detach().cpu().numpy().flatten()
+            action_np = action.detach().cpu().numpy().flatten()
            
-            next_obs, rew, term, trunc, info = env.step(action)
+            next_obs, rew, term, trunc, info = env.step(action_np)
             done = term or trunc
             
-            agent.replay_buffer.store(obs, action, rew, next_obs, 1- done)
+            rollout.append((
+                obs_tensor.squeeze(0),
+                action,
+                torch.tensor(rew, dtype=torch.float32),
+                torch.tensor(next_obs, dtype=torch.float32),
+                torch.tensor(1 - done, dtype=torch.float32),
+                log_prob
+            ))
 
             obs = next_obs
             ep_reward += rew
             if done:
                 obs, info = env.reset()
-        
-        if agent.replay_buffer.check_length():
 
-            obs, actions,rewards, next_obs, masks = agent.replay_buffer.sample()
-            obs_tensor, actions_tensor, rewards_tensor, next_obs_tensor, masks_tensor = replay_to_tensor(obs, actions, rewards, next_obs, masks)
+        states, actions, rewards, next_obs, masks, log_probs = zip(*rollout)
 
-            v_loss = agent.update_v(obs_tensor)
-            q_loss = agent.update_q(obs_tensor, actions_tensor, rewards_tensor, next_obs_tensor, masks_tensor)
-            policy_loss = agent.update_policy(obs_tensor)
+        states = torch.stack(states)
+        actions = torch.stack(actions)
+        rewards = torch.stack(rewards)
+        next_obs = torch.stack(next_obs)
+        masks = torch.stack(masks)
+        log_probs = torch.stack(log_probs)
 
-            # manually step
-            agent.v_opt.zero_grad()
-            agent.q_opt.zero_grad()
-            agent.act_opt.zero_grad()
+        targets = compute_bootstrapping(agent, next_obs, masks, rewards)
 
-            q_loss.backward()
-            v_loss.backward()
-            policy_loss.backward()
-
-            agent.q_opt.step()
-            agent.v_opt.step()
-            agent.act_opt.step()
-
-            print(f"Epoch {epoch+1}/{epoch_num} | Reward: {ep_reward:.2f} | "
-                  f"V Loss: {v_loss:.4f} | Q Loss: {q_loss:.4f} | Policy Loss: {policy_loss:.4f}")
+        actor_loss, critic_loss = agent.compute_losses(states, targets, log_probs)
+        actor_loss, critic_loss = agent.update(actor_loss, critic_loss)
+        print(
+            f"[Loss] "
+            f"actor: {actor_loss:.4f} | "
+            f"critic: {critic_loss:.4f}"
+        )
 
 if __name__ == "__main__":
     envs_to_test = [
@@ -94,8 +93,6 @@ if __name__ == "__main__":
             print(f"Applied image wrappers. Observation shape: {env.observation_space.shape}")
         else:
             print(f"Vector-based state. Observation shape: {obs_shape}")
-
-        train(env,EPOCH_NUM, NUM_STEP)
-
-         
         
+        
+        train(env,EPOCH_NUM, NUM_STEP)

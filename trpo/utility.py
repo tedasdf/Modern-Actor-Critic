@@ -1,8 +1,7 @@
 import torch
 
-from trpo.agent import TRPOagent
 
-def GAE_compute(agent: TRPOagent, states, rewards, masks):
+def GAE_compute(agent, states, rewards, masks):
     with torch.no_grad():
         values = agent.critic(states).detach().squeeze(-1)
 
@@ -67,3 +66,7 @@ def line_search(model, loss_fn, prev_params, full_step, expected_improve_rate, m
         if actual_improve > 0 and ratio > accept_ratio:
             return True, new_params
     return False, prev_params
+
+def flat_grad(y, model, retain_graph=False, create_graph=False):
+    grads = torch.autograd.grad(y, model.parameters(), retain_graph=retain_graph, create_graph=create_graph)
+    return torch.cat([g.contiguous().view(-1) for g in grads])

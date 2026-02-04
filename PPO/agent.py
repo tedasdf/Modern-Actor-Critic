@@ -1,25 +1,34 @@
 
 import torch
 import torch.optim as optim
-from trpo.agent import Rollout
-from utilities.neuralnet import Actor, Critic
+from helper.rollout import Rollout
+from helper.neuralnet import GuassianActor, Critic
 import torch.nn.functional as F
 
 class PPOagent():
-    def __init__(self, obs_dim, act_dim, hidden_size):
-        self.actor = Actor(obs_dim, act_dim, hidden_size)
+    def __init__(self, 
+                 obs_dim, 
+                 act_dim, 
+                 hidden_size,
+                 gamma,
+                 epsilon,
+                 act_lr,
+                 critic_lr,
+                 ):
+        self.actor = GuassianActor(obs_dim, act_dim, hidden_size)
         self.critic = Critic(obs_dim, hidden_size)
 
-        self.actor_op = optim.Adam(self.actor.parameters())
-        self.critic_op = optim.Adam(self.critic.parameters())
+        self.actor_op = optim.Adam(self.actor.parameters(), lr=act_lr)
+        self.critic_op = optim.Adam(self.critic.parameters(), lr=critic_lr)
 
         self.rollout = Rollout()
 
+        self.gamma = gamma
+        self.epsilon = epsilon
+
+
     def select_action(self, obs):
-        logits = self.actor(obs)
-        dist = torch.distributions.Categorical(logits=logits)
-        action = dist.sample()
-        log_prob = dist.log_prob(action)
+        action, log_prob = self.actor.sample(obs)
 
         return action, log_prob
     

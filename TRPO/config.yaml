@@ -1,0 +1,8 @@
+agent_continuous:
+  _target_: TRPO.agent.TRPOagent
+  hidden_size: 256          # hidden layer size for actor and critic
+  gamma: 0.99               # discount factor
+  lam: 0.95                 # GAE lambda (not 0.005, that's too small)
+  lr: 3e-4                  # learning rate for critic optimizer
+  damping: 0.1              # damping for Fisher-vector product
+  max_kl: 0.01              # maximum KL divergence for trust region
