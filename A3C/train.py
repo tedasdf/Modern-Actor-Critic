@@ -2,7 +2,8 @@ import gymnasium as gym
 import torch.optim as optim
 import torch
 import torch.multiprocessing as mp
-
+import wandb
+import argparse
 from A2C.agent import GuassianActor, Critic
 from omegaconf import OmegaConf
 from hydra.utils import instantiate
@@ -19,12 +20,11 @@ global_critic = Critic(obs_dim, hidden_dim)
 global_actor.share_memory()
 global_critic.share_memory()
 
-def worker_fn(worker_id, global_actor, global_critic, optimizer, gamma=0.99, rollout_length=20):
+def worker_fn(worker_id, global_actor, global_critic, optimizer, cfg):
     env = gym.make("Pendulum-v1")
     
     obs, _ = env.reset()
     obs = torch.tensor(obs, dtype=torch.float32)
-    cfg = OmegaConf.load('A3C\config.yaml')
     
     agent = instantiate(
         cfg.agent_continuous,
@@ -96,6 +96,33 @@ def worker_fn(worker_id, global_actor, global_critic, optimizer, gamma=0.99, rol
         # Sync local networks with updated global networks
         agent.actor.load_state_dict(global_actor.state_dict())
         agent.critic.load_state_dict(global_critic.state_dict())
+        wandb.log({
+            "worker_id": worker_id,
+            "train/actor_loss": actor_loss.item(),
+            "train/critic_loss": critic_loss.item(),
+            "env/steps": ep_counter,
+            "eval/return": ep_reward
+        })
+
+
+def parse_func():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--lr", type=float)
+    parser.add_argument("--hidden_dim", type=int)
+    parser.add_argument("--seed", type=int, default=42)
+    args = parser.parse_args()
+
+    return args
+    # # Load base config
+    # cfg = OmegaConf.load("A3C/config.yaml")
+
+    # # Override config with sweep values if provided
+    # if args.lr is not None:
+    #     cfg.agent_continuous.lr = args.lr
+    # if args.hidden_dim is not None:
+    #     cfg.agent_continuous.hidden_dim = args.hidden_dim
+
+    # seed = args.seed
 
 
 if __name__ == "__main__":
@@ -104,12 +131,22 @@ if __name__ == "__main__":
     optimizer = optim.Adam(list(global_actor.parameters()) + list(global_critic.parameters()), lr=3e-4)
     
     cfg = OmegaConf.load('A3C\config.yaml')
+
+    args = parse_func()
+
+
+    if args.lr is not None:
+        cfg.agent_continuous.lr = args.lr
+    if args.hidden_dim is not None:
+        cfg.agent_continuous.hidden_dim = args.hidden_dim
+    if args.seed is not None:
+        seed = args.seed
     
     num_workers = cfg.num_workers
     processes = []
     
     for worker_id in range(num_workers):
-        p = mp.Process(target=worker_fn, args=(worker_id, global_actor, global_critic, optimizer))
+        p = mp.Process(target=worker_fn, args=(worker_id, global_actor, global_critic, optimizer, cfg))
         p.start()
         processes.append(p)
     

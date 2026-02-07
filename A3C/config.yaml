@@ -1,8 +1,11 @@
-num_workers: 4
-num_steps: 128
-num_epoch: 1000
+seed: 42
+num_epoch: 2000         # number of episodes per worker
+num_steps: 20           # rollout length (steps per update)
+num_workers: 4          # number of parallel workers
+env_id: "Pendulum-v1"   # environment
+
 agent_continuous:
-  _target_: A3C.agent.A3Cagent
-  hidden_dim: 256
+  _target_: A3C.agent.A3CAgent
+  hidden_dim: 256        # default hidden layer size
+  lr: 3e-4               # default learning rate
   gamma: 0.99
-  lr: 3e-4

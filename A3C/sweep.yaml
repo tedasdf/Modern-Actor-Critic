@@ -1,0 +1,21 @@
+method: random   # random search
+metric:
+  name: eval/return_mean
+  goal: maximize
+
+parameters:
+  lr:
+    min: 1e-4
+    max: 1e-3
+  hidden_dim:
+    min: 128
+    max: 256
+  seed:
+    values: [42, 123, 2026]  # multiple seeds for robustness
+
+  # Optional: number of workers if you want to test scaling
+  # num_workers:
+  #   values: [2, 4, 8]
+
+# how many hyperparameter combinations to try
+num_samples: 20

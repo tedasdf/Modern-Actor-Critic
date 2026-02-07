@@ -6,7 +6,7 @@ from helper.neuralnet import GuassianActor, Critic
 
 
 class A2Cagent():
-    def __init__(self, obs_dim, act_dim, hidden_dim, gamma, lr):
+    def __init__(self, obs_dim, act_dim, hidden_dim, gamma, lr, actor_weight, critic_weight, entropy_weight):
         self.actor = GuassianActor(obs_dim, act_dim, hidden_dim)
         self.critic = Critic(obs_dim, hidden_dim)
 
@@ -17,6 +17,10 @@ class A2Cagent():
         )
 
         self.gamma = gamma
+        self.actor_weight = actor_weight
+        self.critic_weight = critic_weight
+        self.entropy_weight = entropy_weight
+
 
     def select_action(self, obs):
         action, log_prob, entropy = self.actor.sample(obs)
@@ -46,9 +50,9 @@ class A2Cagent():
 
     
 
-    def update(self, actor_loss, critic_loss , actor_weight=1.0, critic_weight=0.5):
+    def update(self, actor_loss, critic_loss):
 
-        total_loss = actor_weight * actor_loss + critic_weight * critic_loss
+        total_loss = self.actor_weight * actor_loss + self.critic_weight * critic_loss
 
         self.optimizer.zero_grad()
         total_loss.backward()
