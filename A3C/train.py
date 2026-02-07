@@ -37,14 +37,13 @@ def worker_fn(worker_id, global_actor, global_critic, optimizer, gamma=0.99, rol
     agent.critic.load_state_dict(global_critic.state_dict())
     
     ep_reward = 0
-    EPISODE_NUM = 1000
     ep_counter  = 0
 
-    while ep_counter  < EPISODE_NUM:
+    while ep_counter  < cfg.num_epoch:
 
         rollout = {"obs": [], "actions": [], "rewards": [], "log_probs": [], "masks": []}
         
-        for _ in range(rollout_length):
+        for _ in range(cfg.num_steps):
             action, log_prob, _ = agent.actor.sample(obs.unsqueeze(0))
             action_np = action.squeeze(0).detach().numpy()
             
@@ -104,7 +103,9 @@ if __name__ == "__main__":
     
     optimizer = optim.Adam(list(global_actor.parameters()) + list(global_critic.parameters()), lr=3e-4)
     
-    num_workers = 4
+    cfg = OmegaConf.load('A3C\config.yaml')
+    
+    num_workers = cfg.num_workers
     processes = []
     
     for worker_id in range(num_workers):

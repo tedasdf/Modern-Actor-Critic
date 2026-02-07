@@ -38,7 +38,7 @@ class A2Cagent():
   
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
-        # Actor loss
+        # Actor loss                                                                                       
         actor_loss = -(log_probs * advantages).mean()
         critic_loss = F.mse_loss(values, targets, reduction='mean')
 

@@ -1,22 +1,38 @@
 
-import torch
+import torch, wandb
 import gymnasium as gym
 import numpy as np
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
-
+from omegaconf import OmegaConf
 from A2C.agent import A2Cagent
 from helper.base import compute_boostrapping_multi_envs
+from hydra.utils import instantiate
 
 NUM_ENVS = 4  # number of parallel environments
 
-def train(envs, epoch_num):
+def set_seed(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def train(envs, cfg, epoch_num, step_num):
+    set_seed(cfg.seed)
+
+    wandb.init(
+        project="RL_experiment",
+        config=OmegaConf.to_container(cfg, resolve=True)
+    )
 
     obs_dim = envs.single_observation_space.shape[0]
     act_dim = envs.single_action_space.shape[0]
 
 
-    agent = A2Cagent(obs_dim, act_dim, hidden_dim=256, gamma=0.99, lr=3e-4)
-    
+    agent = instantiate(
+        cfg.agent_continuous,
+        obs_dim=obs_dim,
+        act_dim=act_dim
+    )
+   
     obs, infos = envs.reset()  # returns a batch of observations
 
     
@@ -32,7 +48,7 @@ def train(envs, epoch_num):
             "next_obs": []
         }
         
-        for step in range(2):
+        for step in range(step_num):
             obs_tensor = torch.tensor(obs, dtype=torch.float32)
             actions, log_prob, entropy = agent.select_action(obs_tensor)
           
@@ -49,9 +65,6 @@ def train(envs, epoch_num):
 
             obs = next_obs
             ep_rewards += rew
-            if dones.any():
-                reset_obs, _ = envs.reset(seed=42) # Or specific indices if supported
-                obs[dones] = reset_obs[dones]
 
         states = torch.stack(rollout["obs"])        # (NUM_STEPS, NUM_ENVS, obs_dim)
         actions = torch.stack(rollout["actions"])   # (NUM_STEPS, NUM_ENVS, act_dim)
@@ -69,6 +82,13 @@ def train(envs, epoch_num):
         )
 
 
+        wandb.log({
+            "actor_loss": actor_loss.item(),
+            "critic_loss": critic_loss.item(),
+            "mean_return": ep_rewards.mean()
+        })
+
+
 
 def make_single_env():
     env = gym.make("Pendulum-v1", render_mode="rgb_array")  # render_mode="human" shows the game
@@ -82,10 +102,31 @@ def make_single_env():
     return env
 
 
+
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    # sweep parameters
+    parser.add_argument("--lr", type=float, default=None)
+    parser.add_argument("--hidden_dim", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=42)
+
+    args = parser.parse_args()
+
     env_id = "Pendulum-v1"
     
     envs = gym.vector.SyncVectorEnv([lambda: make_single_env() for _ in range(4)])
+    cfg = OmegaConf.load('A2C\config.yaml')
+
+    if args.lr is not None:
+        cfg.agent_continuous.lr = args.lr
+    if args.hidden_dim is not None:
+        cfg.agent_continuous.hidden_dim = args.hidden_dim
+
+    epoch_num = cfg.num_epoch
+    step_num = cfg.num_step
 
 
-    train(envs,10)
+    train(envs, cfg, epoch_num, step_num)

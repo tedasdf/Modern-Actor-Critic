@@ -114,8 +114,6 @@ class ActorCritic(nn.Module):
         return logits, value
     
 
-
-
 class OUActionNoise():
     def __init__(self, mu, sigma=0.15, theta=0.2, dt=1e-2, x0=None):
         self.theta = theta

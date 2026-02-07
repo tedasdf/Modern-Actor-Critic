@@ -1,3 +1,6 @@
+num_workers: 4
+num_steps: 128
+num_epoch: 1000
 agent_continuous:
   _target_: A3C.agent.A3Cagent
   hidden_dim: 256
