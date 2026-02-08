@@ -2,7 +2,7 @@
 import torch.optim as optim
 import torch.nn.functional as F
 from helper.neuralnet import GuassianActor, Critic
-
+import torch
 
 
 class A2Cagent():
@@ -34,7 +34,6 @@ class A2Cagent():
         
         log_probs = log_probs.view(-1)
         targets = targets.view(-1)
-        targets = (targets - targets.mean()) / (targets.std() + 1e-8)
 
         # Critic loss
         values = self.critic(states).squeeze(-1)
@@ -44,19 +43,27 @@ class A2Cagent():
 
         # Actor loss                                                                                       
         actor_loss = -(log_probs * advantages).mean()
-        critic_loss = F.mse_loss(values, targets, reduction='mean')
+        critic_loss = F.mse_loss(values, targets)
 
         return actor_loss, critic_loss
 
     
 
-    def update(self, actor_loss, critic_loss):
+    def update(self, actor_loss, critic_loss, entropy):
 
-        total_loss = self.actor_weight * actor_loss + self.critic_weight * critic_loss
+        total_loss = (
+            self.actor_weight * actor_loss
+            + self.critic_weight * critic_loss
+            - self.entropy_weight * entropy
+        )
 
         self.optimizer.zero_grad()
         total_loss.backward()
+        torch.nn.utils.clip_grad_norm_(
+            list(self.actor.parameters()) + list(self.critic.parameters()), 0.5
+        )
         self.optimizer.step()
+
 
         return actor_loss.item(), critic_loss.item()
 

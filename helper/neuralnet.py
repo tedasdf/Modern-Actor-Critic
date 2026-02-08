@@ -25,15 +25,18 @@ class GuassianActor(nn.Module):
     def sample(self, obs):
         mu, std = self.forward(obs)
         dist = torch.distributions.Normal(mu, std)
-        action = dist.rsample()
-        log_prob = dist.log_prob(action)
+
+        z = dist.rsample()
+        action = torch.tanh(z)
+
+        # Log prob with tanh correction
+        log_prob = dist.log_prob(z) - torch.log(1 - action.pow(2) + 1e-6)
         log_prob = log_prob.sum(dim=-1)
-        entropy = dist.entropy().sum(dim=-1)
-        # log_std = torch.log(std)
-        # epsilon = torch.randn_like(mu)       # ε ~ N(0, I)
-        # a = mu + std * epsilon               # reparameterization
-        # log_prob = (-0.5 * ((epsilon)**2 + 2*log_std + np.log(2*np.pi))).sum(dim=-1)
+
+        entropy = dist.entropy().sum(dim=-1).mean()
+
         return action, log_prob, entropy
+
 
     def entropy(self, obs):
         mu, std = self.forward(obs)

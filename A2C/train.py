@@ -2,7 +2,7 @@
 import torch, wandb
 import gymnasium as gym
 import numpy as np
-from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
+from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation, RecordEpisodeStatistics
 from omegaconf import OmegaConf
 from A2C.agent import A2Cagent
 from helper.base import compute_boostrapping_multi_envs
@@ -45,15 +45,17 @@ def train(envs, cfg, epoch_num, step_num):
             "rewards": [],
             "log_probs": [],  
             "masks": [],      
-            "next_obs": []
+            "next_obs": [],
+            "entropies": []
         }
         
         for step in range(step_num):
             obs_tensor = torch.tensor(obs, dtype=torch.float32)
             actions, log_prob, entropy = agent.select_action(obs_tensor)
-          
-            next_obs, rew, term, trunc, info = envs.step(actions.detach().numpy())      
+            env_actions = 2.0 * actions.detach().numpy()
+            next_obs, rew, term, trunc, info = envs.step(env_actions)      
             # terminated/truncated is per env
+            
             dones = term | trunc
             
             rollout["obs"].append(obs_tensor)
@@ -62,19 +64,21 @@ def train(envs, cfg, epoch_num, step_num):
             rollout["log_probs"].append(log_prob)
             rollout["masks"].append(torch.tensor(1 - dones, dtype=torch.float32))
             rollout["next_obs"].append(torch.tensor(next_obs, dtype=torch.float32))
+            rollout["entropies"].append(entropy)
 
             obs = next_obs
             ep_rewards += rew
-
+            
         states = torch.stack(rollout["obs"])        # (NUM_STEPS, NUM_ENVS, obs_dim)
         actions = torch.stack(rollout["actions"])   # (NUM_STEPS, NUM_ENVS, act_dim)
-    
+        entropy = torch.stack(rollout["entropies"]).mean()
+
         targets = compute_boostrapping_multi_envs(agent, rollout)
         
-        log_probs = torch.stack(rollout["log_probs"]).view(-1)
+        log_probs = torch.stack(rollout["log_probs"])  # (T, N)
 
         actor_loss, critic_loss = agent.compute_losses(states,targets,log_probs)
-        agent.update(actor_loss, critic_loss)
+        agent.update(actor_loss, critic_loss,entropy)
         print(
             f"[Loss] "
             f"actor: {actor_loss:.4f} | "
@@ -85,20 +89,21 @@ def train(envs, cfg, epoch_num, step_num):
         wandb.log({
             "actor_loss": actor_loss.item(),
             "critic_loss": critic_loss.item(),
-            "mean_return": ep_rewards.mean()
+            "mean_return": ep_rewards.mean(),
         })
 
 
 
 def make_single_env():
-    env = gym.make("Pendulum-v1", render_mode="rgb_array")  # render_mode="human" shows the game
+    env = gym.make("Pendulum-v1", render_mode="rgb_array")
+
     obs_shape = env.observation_space.shape
-    # Image-based envs: (H, W, C)
     if obs_shape is not None and len(obs_shape) == 3:
         env = GrayscaleObservation(env, keep_dim=True)
         env = ResizeObservation(env, (84, 84))
         env = FrameStackObservation(env, stack_size=3)
 
+    env = RecordEpisodeStatistics(env)
     return env
 
 
