@@ -1,3 +1,11 @@
+program: A3C/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - A3C.train
+  - ${args}
+
 method: random   # random search
 metric:
   name: eval/return_mean
@@ -5,9 +13,11 @@ metric:
 
 parameters:
   lr:
+    distribution: uniform
     min: 1e-4
     max: 1e-3
   hidden_dim:
+    distribution: int_uniform
     min: 128
     max: 256
   seed:

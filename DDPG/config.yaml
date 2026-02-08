@@ -1,6 +1,6 @@
 seed: 42
 num_epoch: 1000        # total episodes
-num_step: 200          # steps per episode
+num_step: 20          # steps per episode
 env_id: "Pendulum-v1"
 OUActionNoise:
   sigma: 0.15

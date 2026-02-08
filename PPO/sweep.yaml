@@ -1,3 +1,11 @@
+program: PPO/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - PPO.train
+  - ${args}
+
 # sweep.yaml
 method: random      # or grid / bayes
 metric:
@@ -6,14 +14,17 @@ metric:
 
 parameters:
   hidden_dim:
+    distribution: int_uniform
     min: 128
     max: 256
 
   act_lr:
+    distribution: uniform
     min: 1e-4
     max: 1e-3
 
   critic_lr:
+    distribution: uniform
     min: 1e-4
     max: 1e-3
 
@@ -24,4 +35,3 @@ parameters:
   # rollout_length:
   #   values: [20, 40, 60]
 
-num_samples: 20  # number of random hyperparameter sets

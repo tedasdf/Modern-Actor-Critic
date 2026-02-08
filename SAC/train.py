@@ -5,7 +5,7 @@ from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameSta
 import time, torch
 from omegaconf import OmegaConf
 from helper.base import replay_to_tensor
-
+import numpy as np
 from hydra.utils import instantiate
 import wandb
 
@@ -13,10 +13,9 @@ def train(env, cfg, epoch_num, num_step):
 
     wandb.init(
         project="SAC_experiment",  # your project name
-        config=cfg
+        config=OmegaConf.to_container(cfg, resolve=True)
     )
-    wandb.config.update(cfg) 
-
+   
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0] if hasattr(env.action_space, 'shape') else env.action_space.n
     
@@ -34,9 +33,11 @@ def train(env, cfg, epoch_num, num_step):
         for _ in range(num_step):
             obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
             action = agent.select_action(obs_tensor)
-
+            
             action = action.detach().cpu().numpy().flatten()
-           
+ 
+            action = np.clip(action * 2.0, env.action_space.low, env.action_space.high)
+
             next_obs, rew, term, trunc, info = env.step(action)
             done = term or trunc
             
@@ -49,12 +50,12 @@ def train(env, cfg, epoch_num, num_step):
         
         if agent.replay_buffer.check_length():
 
-            obs, actions,rewards, next_obs, masks = agent.replay_buffer.sample()
-            obs_tensor, actions_tensor, rewards_tensor, next_obs_tensor, masks_tensor = replay_to_tensor(obs, actions, rewards, next_obs, masks)
+            states, actions,rewards, next_states, masks = agent.replay_buffer.sample()
+            states_tensor, actions_tensor, rewards_tensor, next_states_tensor, masks_tensor = replay_to_tensor(states, actions, rewards, next_states, masks)
 
-            v_loss = agent.update_v(obs_tensor)
-            q_loss = agent.update_q(obs_tensor, actions_tensor, rewards_tensor, next_obs_tensor, masks_tensor)
-            policy_loss = agent.update_policy(obs_tensor)
+            v_loss = agent.update_v(states_tensor)
+            q_loss = agent.update_q(states_tensor, actions_tensor, rewards_tensor, next_states_tensor, masks_tensor)
+            policy_loss = agent.update_policy(states_tensor)
 
             # manually step
             agent.v_opt.zero_grad()
@@ -84,8 +85,6 @@ def train(env, cfg, epoch_num, num_step):
 
 if __name__ == "__main__":
    
-    EPOCH_NUM = 10
-    NUM_STEP = 100
     
     cfg = OmegaConf.load('SAC\config.yaml')
     EPOCH_NUM = cfg.num_epoch
@@ -103,7 +102,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Override config.yaml values
-    if args.hidden_dim: cfg.agent_continuous.hidden_size = args.hidden_dim
+    if args.hidden_dim: cfg.agent_continuous.hidden_dim = args.hidden_dim
     if args.act_lr: cfg.agent_continuous.act_lr = args.act_lr
     if args.state_lr: cfg.agent_continuous.state_lr = args.state_lr
     if args.state_act_lr: cfg.agent_continuous.state_act_lr = args.state_act_lr

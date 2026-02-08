@@ -1,5 +1,3 @@
-
-
 import gymnasium as gym
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
 import numpy as np
@@ -15,7 +13,7 @@ def train(env, num_epoch, num_step, cfg):
 
     wandb.init(
         project="PPO_experiment",
-        config=cfg
+        config=OmegaConf.to_container(cfg, resolve=True),
     )
 
     obs_dim = env.observation_space.shape[0]
@@ -29,33 +27,46 @@ def train(env, num_epoch, num_step, cfg):
 
     minibatch_size = cfg.minibatch_size
     obs, info = env.reset()
-    for _ in range(num_epoch):
-        
+
+    print(f"Starting training for {num_epoch} epochs, {num_step} steps per epoch")
+    print(f"Observation dim: {obs_dim}, Action dim: {act_dim}")
+
+    for epoch in range(num_epoch):
         ep_reward = 0
-        for _ in range(num_step):
-            # use the observation to seleect act
+
+        for step in range(num_step):
             obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
-            action, log_prob = agent.select_action(obs_tensor)
+            
+            action, log_prob, mu, std = agent.select_action(obs_tensor)
 
-            # env step
-            next_obs, rew, term, trunc, info = env.step(action.item())
+            # Convert to numpy and clip
+            action_np = action.detach().cpu().numpy().flatten()
+            action_np = np.clip(action_np, env.action_space.low, env.action_space.high)
+
+            next_obs, rew, term, trunc, info = env.step(action_np)
             done = term or trunc
-            agent.rollout.store((obs, action, rew, 1 - done, log_prob))
-
-            obs = next_obs
             ep_reward += rew
-            if done:
-                obs, info = env.reset()
 
-            # store in rollout with the r
-        states, actions, old_log_probs, rewards, masks = agent.rollout.retrieve()
+            agent.rollout.store(obs, action, rew, 1 - done, log_prob, mu=mu, std=std)
+            obs = next_obs
+
+            if done:
+                # print(f"[Epoch {epoch} Step {step}] Episode done. Reward: {ep_reward:.2f}")
+                obs, info = env.reset()
+                ep_reward = 0
+
+            # Debug print every 10 steps
+            # if step % 10 == 0:
+            #     print(f"[Epoch {epoch} Step {step}] Action: {action_np}, Reward: {rew:.2f}")
+
+        # Compute targets and advantages
+        states, actions, old_log_probs, rewards, masks, mu_old, std_old, _  = agent.rollout.retrieve()
         targets, advantages = GAE_compute(agent, states, rewards, masks)
 
         batch_size = states.size(0)
         indices = torch.randperm(batch_size)
 
         for start in range(0, batch_size, minibatch_size):
-            
             mb_idx = indices[start:start + minibatch_size]
 
             mb_states = states[mb_idx]
@@ -63,26 +74,31 @@ def train(env, num_epoch, num_step, cfg):
             mb_old_log_probs = old_log_probs[mb_idx]
             mb_advantages = advantages[mb_idx]
             mb_targets = targets[mb_idx]
-            
-            # Update actor
-            actor_loss = agent.actor_update(mb_states, mb_actions, mb_advantages, mb_old_log_probs)
+            mb_old_mu = mu_old[mb_idx]
+            mb_old_std = std_old[mb_idx]
 
-            # Update critic
+            # Update actor and critic
+            actor_loss = agent.actor_update(mb_states, mb_actions, mb_advantages, mb_old_log_probs, mb_old_mu, mb_old_std)
             critic_loss = agent.critic_update(mb_states, mb_targets)
+
+            # print(f"[Epoch {epoch} Minibatch {start // minibatch_size}] "
+            #       f"Actor Loss: {actor_loss:.4f}, Critic Loss: {critic_loss:.4f}")
+
             wandb.log({
                 "train/actor_loss": actor_loss,
                 "train/critic_loss": critic_loss,
-                "env/episode_reward": ep_reward
+                "env/epoch_reward": ep_reward
             })
 
-            
         agent.rollout.clear()
-    
+        print(f"Epoch {epoch} finished. Total reward this epoch: {ep_reward:.2f}")
+
     env.close()
+    print("Training finished.")
+
 
 if __name__ == "__main__":
-    cfg = OmegaConf.load("config.yaml")
-
+    cfg = OmegaConf.load("PPO/config.yaml")
 
     import argparse
     parser = argparse.ArgumentParser()
@@ -92,12 +108,10 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int)
     args = parser.parse_args()
 
-    # Override config values if passed
     if args.hidden_dim: cfg.agent_continuous.hidden_dim = args.hidden_dim
     if args.act_lr: cfg.agent_continuous.act_lr = args.act_lr
     if args.critic_lr: cfg.agent_continuous.critic_lr = args.critic_lr
     if args.seed: cfg.seed = args.seed
-
 
     torch.manual_seed(cfg.seed)
     np.random.seed(cfg.seed)
@@ -107,8 +121,6 @@ if __name__ == "__main__":
     NUM_STEP = cfg.num_step
 
     env = gym.make(cfg.env_id)
-
-    
     obs_shape = env.observation_space.shape
     is_image = obs_shape is not None and len(obs_shape) == 3
 
@@ -120,7 +132,4 @@ if __name__ == "__main__":
     else:
         print(f"Vector-based state. Observation shape: {obs_shape}")
 
-    
     train(env, EPOCH_NUM, NUM_STEP, cfg)
-         
-        

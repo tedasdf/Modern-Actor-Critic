@@ -1,4 +1,3 @@
-
 import argparse
 from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
 import gymnasium as gym
@@ -27,14 +26,17 @@ def train(env, cfg, seed):
     # WandB logging
     wandb.init(
         project="RL_experiment",
-        config=cfg,
+        config=OmegaConf.to_container(cfg, resolve=True),
         reinit=True
     )
 
     obs, info = env.reset()
     ep_reward = 0
 
+    print(f"[INFO] Training started for {cfg.num_epoch} epochs, obs_dim={obs_dim}, act_dim={act_dim}")
+
     for epoch in range(cfg.num_epoch):
+        print(f"\n[Epoch {epoch+1}/{cfg.num_epoch}]")
         for step in range(cfg.num_step):
             obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
             
@@ -46,22 +48,28 @@ def train(env, cfg, seed):
             next_obs, reward, terminated, truncated, info = env.step(action_np)
             done = terminated or truncated
 
+            ep_reward += reward
+
+            # Print step info every 10 steps
+            if step % 10 == 0:
+                print(f"  Step {step+1}/{cfg.num_step} | Reward: {reward:.2f} | Episode Reward: {ep_reward:.2f}")
+
             # Store transition in replay buffer
             agent.replay_buffer.store(obs, action_np, reward, next_obs, done)
-
             obs = next_obs
-            ep_reward += reward
 
             # Reset env if done
             if done:
+                print(f"  Episode finished. Total Reward: {ep_reward:.2f}")
                 obs, info = env.reset()
+                ep_reward = 0
 
             # Update agent if buffer is ready
             if agent.replay_buffer.check_length():
                 s, a, r, ns, m = agent.replay_buffer.sample()
                 s_t, a_t, r_t, ns_t, m_t = replay_to_tensor(s, a, r, ns, m)
                 critic_loss, actor_loss = agent.update_network(s_t, a_t, r_t, ns_t, m_t)
-
+                print(f"    Update step: Actor Loss={actor_loss:.4f}, Critic Loss={critic_loss:.4f}")
                 wandb.log({
                     "train/actor_loss": actor_loss,
                     "train/critic_loss": critic_loss,
@@ -70,7 +78,9 @@ def train(env, cfg, seed):
 
         # Optional: log after each epoch
         wandb.log({"epoch": epoch, "epoch_reward": ep_reward})
-        ep_reward = 0
+
+    print("[INFO] Training finished!")
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -99,9 +109,10 @@ if __name__ == "__main__":
     # Apply wrappers for image-based envs if needed
     obs_shape = env.observation_space.shape
     if obs_shape is not None and len(obs_shape) == 3:
-        from gymnasium.wrappers import GrayscaleObservation, ResizeObservation, FrameStackObservation
         env = GrayscaleObservation(env, keep_dim=True)
         env = ResizeObservation(env, (84, 84))
         env = FrameStackObservation(env, stack_size=4)
+
+    print(f"[INFO] Env '{env_id}' created. Observation shape: {env.observation_space.shape}, Action shape: {env.action_space.shape if hasattr(env.action_space,'shape') else env.action_space.n}")
 
     train(env, cfg, args.seed)

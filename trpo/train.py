@@ -11,7 +11,7 @@ def train(env, cfg, num_epoch, num_steps):
 
     wandb.init(
         project="TRPO_experiment",
-        config=cfg
+        config=OmegaConf.to_container(cfg, resolve=True)
     )
 
     obs_dim = env.observation_space.shape[0]
@@ -45,7 +45,7 @@ def train(env, cfg, num_epoch, num_steps):
                 obs, info = env.reset()
 
             # store in rollout with the r
-        states, actions, old_log_probs, rewards, masks = agent.rollout.retrieve()
+        states, actions, old_log_probs, rewards, masks, _ , _ , _ = agent.rollout.retrieve()
         targets, advantages = GAE_compute(agent, states, rewards, masks)
         
         # Update actor

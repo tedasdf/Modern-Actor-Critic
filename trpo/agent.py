@@ -45,11 +45,11 @@ class TRPOagent():
         return fvp + self.damping * v # Ap, Curvature applied to p # damping * v ~~ Tikhonov regularisation
     
     def select_action(self, obs):
-        action, log_prob = self.actor.sample(obs)
+        action, log_prob, _ = self.actor.sample(obs)
         return action, log_prob
 
     def actor_update(self, states, actions, advantages, old_log_probs, n_cg_steps=10):
-        old_loss = self.compute_surrogate_loss(states, actions, advantages, old_log_probs).item()
+        old_loss = self.compute_surrogate_loss(states, actions, advantages, old_log_probs)
         g = flat_grad(old_loss, self.actor).detach()
 
         prev_params = get_flat_params(self.actor)

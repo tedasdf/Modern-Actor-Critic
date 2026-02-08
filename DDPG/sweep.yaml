@@ -1,3 +1,11 @@
+program: DDPG/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - DDPG.train
+  - ${args}
+
 method: random
 metric:
   name: eval/return_mean
@@ -5,12 +13,15 @@ metric:
 
 parameters:
   lr_actor:
+    distribution: uniform
     min: 1e-4
     max: 1e-3
   lr_critic:
+    distribution: uniform
     min: 1e-4
     max: 1e-3
   hidden_dim:
+    distribution: int_uniform
     min: 128
     max: 256
   seed:

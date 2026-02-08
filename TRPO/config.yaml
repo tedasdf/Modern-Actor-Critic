@@ -1,7 +1,7 @@
 env_id: "Pendulum-v1"
 
 agent_continuous:
-  _target_: TRPO.agent.TRPOAgent
+  _target_: TRPO.agent.TRPOagent
   hidden_size: 256
   gamma: 0.99
   lam: 0.95
@@ -10,4 +10,4 @@ agent_continuous:
   max_kl: 0.01
 
 num_epoch: 1000
-num_steps: 1024
+num_step: 1024

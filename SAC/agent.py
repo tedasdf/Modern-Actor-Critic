@@ -6,16 +6,16 @@ from helper.replay_buffer import ReplayBuffer
 
 
 class SACagent():
-    def __init__(self, obs_dim, act_dim, hidden_size, alpha, gamma, tau, act_lr, state_lr, state_act_lr, capacity, batch_size):
+    def __init__(self, obs_dim, act_dim, hidden_dim, alpha, gamma, tau, act_lr, state_lr, state_act_lr, capacity, batch_size):
         self.alpha = alpha
         self.gamma = gamma
         self.tau = tau
 
-        self.actor = GuassianActor(obs_dim, act_dim, hidden_size)
-        self.state_critic = Critic(obs_dim, hidden_size)
-        self.target_critic = Critic(obs_dim, hidden_size)
+        self.actor = GuassianActor(obs_dim, act_dim, hidden_dim)
+        self.state_critic = Critic(obs_dim, hidden_dim)
+        self.target_critic = Critic(obs_dim, hidden_dim)
 
-        self.state_action_critic = StateValCritc(obs_dim, act_dim, hidden_size)
+        self.state_action_critic = StateValCritc(obs_dim, act_dim, hidden_dim)
 
         self.replay_buffer = ReplayBuffer(capacity, batch_size)
 
@@ -31,14 +31,14 @@ class SACagent():
 
     
     def select_action(self, obs):
-        action, _ = self.actor.sample(obs)
+        action, _ , _= self.actor.sample(obs)
 
         return action
     
 
     def update_v(self, obs):
         state_val = self.state_critic(obs)
-        a, log_pi = self.actor.sample(obs)
+        a, log_pi, _  = self.actor.sample(obs)
         
         log_pi = log_pi.detach()
         
@@ -61,7 +61,7 @@ class SACagent():
 
     def update_policy(self, obs):
 
-        a, log_pi = self.actor.sample(obs)
+        a, log_pi, _  = self.actor.sample(obs)
         q_val = self.state_action_critic(obs, a)
         loss = (self.alpha * log_pi - q_val).mean()
         return loss

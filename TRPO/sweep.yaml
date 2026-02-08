@@ -1,3 +1,11 @@
+program: TRPO/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - TRPO.train
+  - ${args}
+
 method: random
 metric:
   name: reward
@@ -7,6 +15,7 @@ parameters:
   hidden_size:
     values: [128, 256, 512]
   lr:
+    distribution: uniform
     min: 1e-4
     max: 1e-3
   max_kl:
@@ -14,4 +23,3 @@ parameters:
   seed:
     values: [42, 123, 2026]
 
-num_samples: 20

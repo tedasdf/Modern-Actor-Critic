@@ -2,18 +2,17 @@
 # config.yaml
 seed: 42
 num_epoch: 2000           # episodes per worker
-num_steps: 20             # rollout length
+num_step: 20             # rollout length
 num_workers: 4
 env_id: "Pendulum-v1"
 minibatch_size: 8
 
 agent_continuous:
-  _target_: PPOagent        # or your A2C/PPO agent class
+  _target_: PPO.agent.PPOagent        # or your A2C/PPO agent class
   hidden_dim: 256          # default hidden layer size
   gamma: 0.99
   epsilon: 0.2
   kl_target: 0.01
   act_lr: 3e-4
   critic_lr: 3e-4
-  l2_reg: 1e-3
   lam: 0.95
