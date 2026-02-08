@@ -1,8 +1,13 @@
+env_id: "Pendulum-v1"
+
 agent_continuous:
-  _target_: TRPO.agent.TRPOagent
-  hidden_size: 256          # hidden layer size for actor and critic
-  gamma: 0.99               # discount factor
-  lam: 0.95                 # GAE lambda (not 0.005, that's too small)
-  lr: 3e-4                  # learning rate for critic optimizer
-  damping: 0.1              # damping for Fisher-vector product
-  max_kl: 0.01              # maximum KL divergence for trust region
+  _target_: TRPO.agent.TRPOAgent
+  hidden_size: 256
+  gamma: 0.99
+  lam: 0.95
+  lr: 3e-4
+  damping: 0.1
+  max_kl: 0.01
+
+num_epoch: 1000
+num_steps: 1024

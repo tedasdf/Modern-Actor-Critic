@@ -7,10 +7,11 @@ from helper.neuralnet import DDPGAct, DDPGCrit, OUActionNoise
 from helper.replay_buffer import ReplayBuffer
 
 class DDPGagent():
-    def __init__(self, obs_dim, act_dim, hidden_dim, capacity, batch_size , tau, gamma, actor_lr, critic_lr):
+    def __init__(self, obs_dim, act_dim, hidden_dim, capacity, batch_size , tau, gamma, actor_lr, critic_lr, ou_cfg):
         self.actor = DDPGAct(obs_dim, hidden_dim, act_dim, 3e-3 ) 
         self.critic = DDPGCrit(obs_dim, hidden_dim, act_dim, 3e-4 )
-        self.noise = OUActionNoise(mu=np.zeros(act_dim), sigma=0.15, theta=0.2, dt=1e-2)
+
+        self.noise = OUActionNoise(mu=np.zeros(act_dim), sigma=ou_cfg.sigma, theta=ou_cfg.theta, dt=ou_cfg.dt)
 
         self.target_actor = DDPGAct(obs_dim, hidden_dim, act_dim, 3e-3 )
         self.target_critic = DDPGCrit(obs_dim, hidden_dim, act_dim, 3e-4 )

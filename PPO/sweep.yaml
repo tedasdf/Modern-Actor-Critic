@@ -1,0 +1,27 @@
+# sweep.yaml
+method: random      # or grid / bayes
+metric:
+  name: eval/return_mean
+  goal: maximize
+
+parameters:
+  hidden_dim:
+    min: 128
+    max: 256
+
+  act_lr:
+    min: 1e-4
+    max: 1e-3
+
+  critic_lr:
+    min: 1e-4
+    max: 1e-3
+
+  seed:
+    values: [42, 123, 2026]  # optional: multiple seeds for robustness
+
+  # optional: rollout_length sweep
+  # rollout_length:
+  #   values: [20, 40, 60]
+
+num_samples: 20  # number of random hyperparameter sets

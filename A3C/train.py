@@ -23,6 +23,19 @@ global_critic.share_memory()
 def worker_fn(worker_id, global_actor, global_critic, optimizer, cfg):
     env = gym.make("Pendulum-v1")
     
+    wandb.init(
+        project="RL_experiment",
+        config={
+            "lr": cfg.agent_continuous.lr,
+            "hidden_dim": cfg.agent_continuous.hidden_dim,
+            "seed": seed,
+            "num_steps": cfg.num_steps,
+            "num_epoch": cfg.num_epoch,
+            "worker_id": worker_id
+        },
+        reinit=True  # required for multiple processes
+    )
+        
     obs, _ = env.reset()
     obs = torch.tensor(obs, dtype=torch.float32)
     
@@ -141,7 +154,24 @@ if __name__ == "__main__":
         cfg.agent_continuous.hidden_dim = args.hidden_dim
     if args.seed is not None:
         seed = args.seed
+    else:
+        seed = 42
+
+
+
+    # Global networks
+    global_actor = GuassianActor(obs_dim, act_dim, hidden_dim)
+    global_critic = Critic(obs_dim, hidden_dim)
+
+    # Share memory across processes
+    global_actor.share_memory()
+    global_critic.share_memory()
     
+    optimizer = optim.Adam(
+        list(global_actor.parameters()) + list(global_critic.parameters()), 
+        lr=cfg.agent_continuous.lr
+    )
+        
     num_workers = cfg.num_workers
     processes = []
     

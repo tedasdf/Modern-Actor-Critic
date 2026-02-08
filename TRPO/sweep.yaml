@@ -1,0 +1,17 @@
+method: random
+metric:
+  name: reward
+  goal: maximize
+
+parameters:
+  hidden_size:
+    values: [128, 256, 512]
+  lr:
+    min: 1e-4
+    max: 1e-3
+  max_kl:
+    values: [0.005, 0.01, 0.02]
+  seed:
+    values: [42, 123, 2026]
+
+num_samples: 20

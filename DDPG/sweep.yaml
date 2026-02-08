@@ -1,0 +1,19 @@
+method: random
+metric:
+  name: eval/return_mean
+  goal: maximize
+
+parameters:
+  lr_actor:
+    min: 1e-4
+    max: 1e-3
+  lr_critic:
+    min: 1e-4
+    max: 1e-3
+  hidden_dim:
+    min: 128
+    max: 256
+  seed:
+    values: [42, 123, 2026]
+
+num_samples: 20

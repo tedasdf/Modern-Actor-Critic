@@ -5,10 +5,14 @@ import torch
 from helper.base import GAE_compute
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
+import wandb
 
-def train(env, num_epoch, num_steps):
+def train(env, cfg, num_epoch, num_steps):
 
-    cfg = OmegaConf.load('TRPO\config.yaml')
+    wandb.init(
+        project="TRPO_experiment",
+        config=cfg
+    )
 
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0] if hasattr(env.action_space, 'shape') else env.action_space.n
@@ -51,38 +55,57 @@ def train(env, num_epoch, num_steps):
         critic_loss = agent.critic_update(states, targets)
 
         agent.rollout.clear()
+        wandb.log({
+            "epoch": epoch + 1,
+            "reward": ep_reward,
+            "Policy_loss": policy_loss,
+            "VF_loss": critic_loss
+        })
         print(f"Epoch {epoch+1}/{num_epoch} | Reward: {ep_reward:.2f} | "
                   f"Critic Loss: {critic_loss:.4f} =")
 
     env.close()
+    wandb.finsih()
 
 if __name__ == "__main__":
-    envs_to_test = [
-        {"id": "Pendulum-v1", "kwargs": {}},
-        {"id": "LunarLander-v3", "kwargs": {"continuous": True}}
-    ]
+    cfg = OmegaConf.load('TRPO\config.yaml')
+    env_id = cfg.env_id
+    import argparse
 
-    EPOCH_NUM = 1000
-    NUM_STEP = 5
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--hidden_size", type=int)
+    parser.add_argument("--lr", type=float)
+    parser.add_argument("--max_kl", type=float)
+    parser.add_argument("--seed", type=int)
+    args = parser.parse_args()
 
-    for env_spec in envs_to_test:
-        print(f"\n--- Starting Environment: {env_spec['id']} ---")
-        
-        env = gym.make(
-            env_spec["id"], 
-            render_mode="human", 
-            **env_spec["kwargs"]
-        )
-        
-        obs_shape = env.observation_space.shape
-        is_image = obs_shape is not None and len(obs_shape) == 3
+    if args.hidden_size:
+        cfg.agent_continuous.hidden_size = args.hidden_size
+    if args.lr:
+        cfg.agent_continuous.lr = args.lr
+    if args.max_kl:
+        cfg.agent_continuous.max_kl = args.max_kl
+    if args.seed:
+        cfg.seed = args.seed
 
-        if is_image:
-            env = GrayscaleObservation(env, keep_dim=True)
-            env = ResizeObservation(env, (84, 84))
-            env = FrameStackObservation(env, stack_size=4)
-            print(f"Applied image wrappers. Observation shape: {env.observation_space.shape}")
-        else:
-            print(f"Vector-based state. Observation shape: {obs_shape}")
 
-        train(env, EPOCH_NUM, NUM_STEP)
+   
+    print(f"\n--- Starting Environment: {env_id} ---")
+    
+    env = gym.make(
+        env_id, 
+        render_mode="human"
+    )
+    
+    obs_shape = env.observation_space.shape
+    is_image = obs_shape is not None and len(obs_shape) == 3
+
+    if is_image:
+        env = GrayscaleObservation(env, keep_dim=True)
+        env = ResizeObservation(env, (84, 84))
+        env = FrameStackObservation(env, stack_size=4)
+        print(f"Applied image wrappers. Observation shape: {env.observation_space.shape}")
+    else:
+        print(f"Vector-based state. Observation shape: {obs_shape}")
+
+    train(env, cfg, EPOCH_NUM, NUM_STEP)

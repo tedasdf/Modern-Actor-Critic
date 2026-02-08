@@ -7,14 +7,19 @@ from omegaconf import OmegaConf
 from helper.base import replay_to_tensor
 
 from hydra.utils import instantiate
+import wandb
 
+def train(env, cfg, epoch_num, num_step):
 
-def train(env, epoch_num, num_step):
+    wandb.init(
+        project="SAC_experiment",  # your project name
+        config=cfg
+    )
+    wandb.config.update(cfg) 
 
     obs_dim = env.observation_space.shape[0]
     act_dim = env.action_space.shape[0] if hasattr(env.action_space, 'shape') else env.action_space.n
     
-    cfg = OmegaConf.load('SAC\config.yaml')
     
     agent = instantiate(
         cfg.agent_continuous,  # or cfg.agent_discrete
@@ -64,38 +69,67 @@ def train(env, epoch_num, num_step):
             agent.v_opt.step()
             agent.act_opt.step()
 
+            wandb.log({
+                "epoch": epoch + 1,
+                "reward": ep_reward,
+                "V_loss": v_loss.item() if isinstance(v_loss, torch.Tensor) else v_loss,
+                "Q_loss": q_loss.item() if isinstance(q_loss, torch.Tensor) else q_loss,
+                "Policy_loss": policy_loss.item() if isinstance(policy_loss, torch.Tensor) else policy_loss
+            })
+
             print(f"Epoch {epoch+1}/{epoch_num} | Reward: {ep_reward:.2f} | "
                   f"V Loss: {v_loss:.4f} | Q Loss: {q_loss:.4f} | Policy Loss: {policy_loss:.4f}")
+    env.close()
+    wandb.finish()  # mark run complete
 
 if __name__ == "__main__":
-    envs_to_test = [
-        {"id": "Pendulum-v1", "kwargs": {}},
-    ]
-
+   
     EPOCH_NUM = 10
     NUM_STEP = 100
     
-    for env_spec in envs_to_test:
-        print(f"\n--- Starting Environment: {env_spec['id']} ---")
-        
-        env = gym.make(
-            env_spec["id"], 
-            render_mode="human", 
-            **env_spec["kwargs"]
-        )
-        
-        obs_shape = env.observation_space.shape
-        is_image = obs_shape is not None and len(obs_shape) == 3
+    cfg = OmegaConf.load('SAC\config.yaml')
+    EPOCH_NUM = cfg.num_epoch
+    NUM_STEP = cfg.num_step
+    import argparse
 
-        if is_image:
-            env = GrayscaleObservation(env, keep_dim=True)
-            env = ResizeObservation(env, (84, 84))
-            env = FrameStackObservation(env, stack_size=4)
-            print(f"Applied image wrappers. Observation shape: {env.observation_space.shape}")
-        else:
-            print(f"Vector-based state. Observation shape: {obs_shape}")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--hidden_dim", type=int)
+    parser.add_argument("--act_lr", type=float)
+    parser.add_argument("--state_lr", type=float)
+    parser.add_argument("--state_act_lr", type=float)
+    parser.add_argument("--alpha", type=float)
+    parser.add_argument("--batch_size", type=int)
+    parser.add_argument("--seed", type=int)
+    args = parser.parse_args()
 
-        train(env,EPOCH_NUM, NUM_STEP)
+    # Override config.yaml values
+    if args.hidden_dim: cfg.agent_continuous.hidden_size = args.hidden_dim
+    if args.act_lr: cfg.agent_continuous.act_lr = args.act_lr
+    if args.state_lr: cfg.agent_continuous.state_lr = args.state_lr
+    if args.state_act_lr: cfg.agent_continuous.state_act_lr = args.state_act_lr
+    if args.alpha: cfg.agent_continuous.alpha = args.alpha
+    if args.batch_size: cfg.agent_continuous.batch_size = args.batch_size
+    if args.seed: cfg.seed = args.seed
+
+    print(f"\n--- Starting Environment: {cfg.env_id} ---")
+    
+    env = gym.make(
+        cfg.env_id, 
+        render_mode="human", 
+    )
+    
+    obs_shape = env.observation_space.shape
+    is_image = obs_shape is not None and len(obs_shape) == 3
+
+    if is_image:
+        env = GrayscaleObservation(env, keep_dim=True)
+        env = ResizeObservation(env, (84, 84))
+        env = FrameStackObservation(env, stack_size=4)
+        print(f"Applied image wrappers. Observation shape: {env.observation_space.shape}")
+    else:
+        print(f"Vector-based state. Observation shape: {obs_shape}")
+
+    train(env,cfg,EPOCH_NUM, NUM_STEP)
 
          
         

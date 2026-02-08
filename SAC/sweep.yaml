@@ -1,0 +1,28 @@
+method: random  # random search
+
+metric:
+  name: train/ep_reward  # or your WandB log key
+  goal: maximize
+
+parameters:
+  agent_continuous.hidden_size:
+    min: 128
+    max: 512
+  agent_continuous.alpha:
+    min: 0.1
+    max: 0.3
+  agent_continuous.act_lr:
+    min: 1e-4
+    max: 1e-3
+  agent_continuous.state_lr:
+    min: 1e-4
+    max: 1e-3
+  agent_continuous.state_act_lr:
+    min: 1e-4
+    max: 1e-3
+  agent_continuous.batch_size:
+    values: [16, 32, 64]
+  seed:
+    values: [42, 123, 2026]
+
+num_samples: 20  # number of random configs WandB will try
