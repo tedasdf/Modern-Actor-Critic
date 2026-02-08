@@ -49,17 +49,17 @@ class TRPOagent():
         return action, log_prob
 
     def actor_update(self, states, actions, advantages, old_log_probs, n_cg_steps=10):
-        loss = self.compute_surrogate_loss(states, actions, advantages, old_log_probs)
-        g = flat_grad(loss, self.actor).detach()
+        old_loss = self.compute_surrogate_loss(states, actions, advantages, old_log_probs).item()
+        g = flat_grad(old_loss, self.actor).detach()
 
         prev_params = get_flat_params(self.actor)
         old_mu, old_std = self.actor(states)
         step_dir = conjugate_gradient(lambda v: self.fisher_vector_product(v, states, old_mu, old_std), g, n_steps=n_cg_steps)
         
-        shs = 0.5 * torch.dot(step_dir, self.fisher_vector_product(step_dir, states, old_mu, old_std)) # a measure of how large the candidate step is in KL-space
-        step_size = torch.sqrt(self.max_kl / shs)           # enforces the KL trust-region constraint
+        shs = 0.5 * torch.dot(step_dir, self.fisher_vector_product(step_dir, states, old_mu, old_std))
+        step_size = torch.sqrt(self.max_kl / shs)
         full_step = step_size * step_dir                    
-        expected_improve = torch.dot(g, full_step)          # first order estimate of how much reward we'll gain
+        expected_improve = torch.dot(g, full_step)
 
         # Line search
         def loss_fn():
@@ -67,7 +67,12 @@ class TRPOagent():
         
         success, new_params = line_search(self.actor, loss_fn, prev_params, full_step, expected_improve)
         set_flat_params(self.actor, new_params)
-        return success
+
+        new_loss = loss_fn().item()
+        actual_improve = old_loss - new_loss
+
+        # Return values for logging
+        return actual_improve, expected_improve.item(), success
     
     def critic_update(self, states, targets, l2_reg=1e-3):
         values = self.critic(states).squeeze(-1)

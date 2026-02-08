@@ -49,26 +49,32 @@ def train(env, cfg, num_epoch, num_steps):
         targets, advantages = GAE_compute(agent, states, rewards, masks)
         
         # Update actor
-        agent.actor_update(states, actions, advantages, old_log_probs)
+        actual_improve, expected_improve, success = agent.actor_update(states, actions, advantages, old_log_probs)
 
         # Update critic
-        critic_loss = agent.critic_update(states, targets)
+        vf_loss = agent.critic_update(states, targets)
 
         agent.rollout.clear()
         wandb.log({
             "epoch": epoch + 1,
             "reward": ep_reward,
-            "Policy_loss": policy_loss,
-            "VF_loss": critic_loss
+            "actor_actual_improve": actual_improve,
+            "actor_expected_improve": expected_improve,
+            "actor_step_success": success,
+            "VF_loss": vf_loss
         })
         print(f"Epoch {epoch+1}/{num_epoch} | Reward: {ep_reward:.2f} | "
-                  f"Critic Loss: {critic_loss:.4f} =")
+                  f"Critic Loss: {vf_loss:.4f} =")
 
     env.close()
     wandb.finsih()
 
 if __name__ == "__main__":
     cfg = OmegaConf.load('TRPO\config.yaml')
+
+    EPOCH_NUM = cfg.num_epoch
+    NUM_STEP = cfg.num_step
+
     env_id = cfg.env_id
     import argparse
 
