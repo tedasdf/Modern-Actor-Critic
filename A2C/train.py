@@ -52,7 +52,8 @@ def train(envs, cfg, epoch_num, step_num):
         for step in range(step_num):
             obs_tensor = torch.tensor(obs, dtype=torch.float32)
             actions, log_prob, entropy = agent.select_action(obs_tensor)
-            env_actions = 2.0 * actions.detach().numpy()
+            env_actions = envs.single_action_space.high * actions.detach().numpy()
+
             next_obs, rew, term, trunc, info = envs.step(env_actions)      
             # terminated/truncated is per env
             
@@ -71,7 +72,7 @@ def train(envs, cfg, epoch_num, step_num):
             
         states = torch.stack(rollout["obs"])        # (NUM_STEPS, NUM_ENVS, obs_dim)
         actions = torch.stack(rollout["actions"])   # (NUM_STEPS, NUM_ENVS, act_dim)
-        entropy = torch.stack(rollout["entropies"]).mean()
+        entropy = torch.cat(rollout["entropies"]).mean()
 
         targets = compute_boostrapping_multi_envs(agent, rollout)
         
@@ -87,10 +88,18 @@ def train(envs, cfg, epoch_num, step_num):
 
 
         wandb.log({
-            "actor_loss": actor_loss.item(),
-            "critic_loss": critic_loss.item(),
-            "mean_return": ep_rewards.mean(),
+            "entropy": entropy.item(),
+            "value_loss": critic_loss.item(),
+            "policy_loss": actor_loss.item(),
         })
+
+        for i in range(NUM_ENVS):
+            if "episode" in info[i]:
+                wandb.log({
+                    "episode_return": info[i]["episode"]["r"],
+                    "episode_length": info[i]["episode"]["l"],
+                })
+
 
 
 

@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.functional as F
 
-class GuassianActor(nn.Module):
+class GaussianActor(nn.Module):
     def __init__(self, obs_dim, act_dim, hidden_dim):
         super().__init__()
         self.net = nn.Sequential(
@@ -13,13 +13,12 @@ class GuassianActor(nn.Module):
             nn.ReLU()
         )
         self.mean = nn.Linear(hidden_dim, act_dim)
-        self.log_std = nn.Linear(hidden_dim, act_dim)
-    
+        self.log_std = nn.Parameter(torch.zeros(act_dim))
+
     def forward(self, obs):
         x = self.net(obs)
         mu = self.mean(x)
-        log_std = self.log_std(x).clamp(-20, 2)
-        std = log_std.exp()
+        std = self.log_std.exp().expand_as(mu)
         return mu, std
 
     def sample(self, obs):
@@ -29,11 +28,11 @@ class GuassianActor(nn.Module):
         z = dist.rsample()
         action = torch.tanh(z)
 
-        # Log prob with tanh correction
-        log_prob = dist.log_prob(z) - torch.log(1 - action.pow(2) + 1e-6)
+        log_prob = dist.log_prob(z)
+        log_prob -= torch.log(1 - torch.tanh(z).pow(2) + 1e-6)
         log_prob = log_prob.sum(dim=-1)
 
-        entropy = dist.entropy().sum(dim=-1).mean()
+        entropy = dist.entropy().sum(dim=-1).detach()
 
         return action, log_prob, entropy
 

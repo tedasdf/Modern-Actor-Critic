@@ -6,15 +6,19 @@ import torch
 
 
 class A2Cagent():
-    def __init__(self, obs_dim, act_dim, hidden_dim, gamma, lr, actor_weight, critic_weight, entropy_weight):
+    def __init__(self, obs_dim, act_dim, hidden_dim, gamma, actor_lr, critic_lr, actor_weight, critic_weight, entropy_weight):
         self.actor = GuassianActor(obs_dim, act_dim, hidden_dim)
         self.critic = Critic(obs_dim, hidden_dim)
 
         # Single optimizer for both actor and critic
-        self.optimizer = optim.Adam(
-            list(self.actor.parameters()) + list(self.critic.parameters()),
-            lr=lr
+        self.actor_optimizer = optim.Adam(
+            self.actor.parameters(), lr=actor_lr
         )
+
+        self.critic_optimizer = optim.Adam(
+            self.critic.parameters(), lr=critic_lr
+        )
+
 
         self.gamma = gamma
         self.actor_weight = actor_weight
@@ -43,7 +47,7 @@ class A2Cagent():
 
         # Actor loss                                                                                       
         actor_loss = -(log_probs * advantages).mean()
-        critic_loss = F.mse_loss(values, targets)
+        critic_loss = F.mse_loss(values, targets.detach())
 
         return actor_loss, critic_loss
 
@@ -51,19 +55,22 @@ class A2Cagent():
 
     def update(self, actor_loss, critic_loss, entropy):
 
-        total_loss = (
+        # Actor update
+        self.actor_optimizer.zero_grad()
+        actor_total_loss = (
             self.actor_weight * actor_loss
-            + self.critic_weight * critic_loss
             - self.entropy_weight * entropy
         )
+        actor_total_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 0.5)
+        self.actor_optimizer.step()
 
-        self.optimizer.zero_grad()
-        total_loss.backward()
-        torch.nn.utils.clip_grad_norm_(
-            list(self.actor.parameters()) + list(self.critic.parameters()), 0.5
-        )
-        self.optimizer.step()
-
+        # Critic update
+        self.critic_optimizer.zero_grad()
+        critic_total_loss = self.critic_weight * critic_loss
+        critic_total_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
+        self.critic_optimizer.step()
 
         return actor_loss.item(), critic_loss.item()
 
