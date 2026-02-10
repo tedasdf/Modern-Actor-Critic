@@ -123,9 +123,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # sweep parameters
-    parser.add_argument("--lr", type=float, default=None)
+    parser.add_argument("--actor_lr", type=float, default=None)
+    parser.add_argument("--critic_lr", type=float, default=None) 
     parser.add_argument("--hidden_dim", type=int, default=None)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--n_steps", type=float, default=None)
+    parser.add_argument("--num_envs", type=float, default=None)
+    parser.add_argument("--entropy_weight", type=float, default=None)
+    
 
     args = parser.parse_args()
 
@@ -134,11 +139,18 @@ if __name__ == "__main__":
     envs = gym.vector.SyncVectorEnv([lambda: make_single_env() for _ in range(4)])
     cfg = OmegaConf.load('A2C\config.yaml')
 
-    if args.lr is not None:
-        cfg.agent_continuous.lr = args.lr
-    if args.hidden_dim is not None:
-        cfg.agent_continuous.hidden_dim = args.hidden_dim
-
+    if args.actor_lr is not None:
+        cfg.agent_continuous.actor_lr = args.actor_lr
+    if args.critic_lr is not None:
+        cfg.agent_continuous.critic_lr = args.critic_lr
+    if args.n_steps is not None:
+        cfg.num_step = args.n_steps
+    if args.num_envs is not None:
+        cfg.num_envs = args.num_envs
+    if args.entropy_weight is not None:
+        cfg.agent_continuous.entropy_weight = args.entropy_weight
+    if args.seed is not None:
+        cfg.seed = args.seed
     epoch_num = cfg.num_epoch
     step_num = cfg.num_step
 
