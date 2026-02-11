@@ -73,12 +73,13 @@ def train(envs, cfg, epoch_num, step_num):
         states = torch.stack(rollout["obs"])        # (NUM_STEPS, NUM_ENVS, obs_dim)
         actions = torch.stack(rollout["actions"])   # (NUM_STEPS, NUM_ENVS, act_dim)
         entropy = torch.cat(rollout["entropies"]).mean()
+        entropy_std = torch.cat(rollout["entropies"]).std()
 
         targets = compute_boostrapping_multi_envs(agent, rollout)
         
         log_probs = torch.stack(rollout["log_probs"])  # (T, N)
 
-        actor_loss, critic_loss = agent.compute_losses(states,targets,log_probs)
+        actor_loss, critic_loss, adv_mean, adv_std, pg_var = agent.compute_losses(states,targets,log_probs)
         agent.update(actor_loss, critic_loss,entropy)
         print(
             f"[Loss] "
@@ -88,17 +89,11 @@ def train(envs, cfg, epoch_num, step_num):
 
 
         wandb.log({
-            "entropy": entropy.item(),
-            "value_loss": critic_loss.item(),
             "policy_loss": actor_loss.item(),
+            "value_loss": critic_loss.item(),
+            "advantage_std": adv_std,
+            "pg_variance_proxy": pg_var
         })
-
-        for i in range(NUM_ENVS):
-            if "episode" in info[i]:
-                wandb.log({
-                    "episode_return": info[i]["episode"]["r"],
-                    "episode_length": info[i]["episode"]["l"],
-                })
 
 
 
@@ -151,8 +146,10 @@ if __name__ == "__main__":
         cfg.agent_continuous.entropy_weight = args.entropy_weight
     if args.seed is not None:
         cfg.seed = args.seed
+        
     epoch_num = cfg.num_epoch
-    step_num = cfg.num_step
+    step_num = int(cfg.num_step)
+    print(step_num)
 
 
     train(envs, cfg, epoch_num, step_num)

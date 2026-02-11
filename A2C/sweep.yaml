@@ -6,7 +6,7 @@ command:
   - A2C.train
   - ${args}
 
-method: random  # or grid/bayes
+method: grid  # or grid/bayes
 metric:
   name: mean_return
   goal: maximize
@@ -25,6 +25,3 @@ parameters:
 
   entropy_weight:
     values: [0.0, 0.01]
-
-  seed:
-    values: [0, 1, 2]
