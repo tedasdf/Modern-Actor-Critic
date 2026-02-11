@@ -1,0 +1,25 @@
+program: DDPG/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - DDPG.train
+  - ${args}
+
+method: grid
+metric:
+  name: eval/return_mean
+  goal: maximize
+
+parameters:
+  actor_lr:  
+    values: [1e-4, 3e-4]
+  critic_lr: 
+    values: [1e-3]
+  batch_size: 
+    values: [64, 128]
+
+# Is instability coming from optimization or from bootstrapping?
+# ↓ batch size → ↑ variance
+
+# ↑ LR → ↑ update magnitude

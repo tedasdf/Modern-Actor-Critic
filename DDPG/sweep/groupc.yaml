@@ -1,0 +1,20 @@
+program: DDPG/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - DDPG.train
+  - ${args}
+
+method: grid
+metric:
+  name: eval/return_mean
+  goal: maximize
+
+parameters:
+  learning_starts: 
+    values: [1_000, 5_000]
+  buffer_size: 
+    values: [1e5]
+
+# 

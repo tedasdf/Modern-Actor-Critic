@@ -1,6 +1,9 @@
 seed: 42
 num_epoch: 1000        # total episodes
-num_step: 20          # steps per episode
+num_step: 100         # steps per episode
+reward_scale: 1.0
+noise_decay: none
+noise_decay_steps: 100000
 env_id: "Pendulum-v1"
 OUActionNoise:
   sigma: 0.15
@@ -9,9 +12,10 @@ OUActionNoise:
 agent_continuous:
   _target_: DDPG.agent.DDPGagent
   hidden_dim: 256
-  tau: 0.001
+  tau: 0.005
   gamma: 0.99
-  actor_lr: 0.000025
-  critic_lr: 0.00025
-  capacity: 1000000
+  actor_lr: 1e-4
+  critic_lr: 1e-3
+  buffer_size: 1000000
   batch_size: 64
+  learning_start: 1000

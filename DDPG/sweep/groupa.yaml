@@ -1,0 +1,23 @@
+program: DDPG/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - DDPG.train
+  - ${args}
+
+method: grid
+metric:
+  name: eval/return_mean
+  goal: maximize
+
+parameters:
+  ou_sigma: 
+    values: [0.15, 0.25]
+  ou_theta: 
+    values: [0.1, 0.2]
+  noise_decay: 
+    values: ["None", "linear", 'exp']
+
+
+## How much exploration noise is enough but not destablising 

@@ -6,25 +6,29 @@ command:
   - DDPG.train
   - ${args}
 
-method: random
+method: grid
 metric:
   name: eval/return_mean
   goal: maximize
 
 parameters:
-  lr_actor:
-    distribution: uniform
-    min: 1e-4
-    max: 1e-3
-  lr_critic:
-    distribution: uniform
-    min: 1e-4
-    max: 1e-3
-  hidden_dim:
-    distribution: int_uniform
-    min: 128
-    max: 256
-  seed:
-    values: [42, 123, 2026]
+  tau:
+    [0.001, 0.005, 0.01]
+  gamma:
+    [0.95, 0.98, 0.99, 0.995]
+  n_step:
+    [1 , 2, 4]
+  OUActionNoise.sigma:
+    [0.1, 0.2,0.3]
+  OUActionNoise.theta:
+    [0.1, 0.15, 0.2]
+
+  critic_lr:
+    [1e-4, 3e-4, 1e-3]
+  actor_lr: 
+    [1e-3, 3e-3]
+  batch_size:
+    [64, 128, 256]
+  
 
 num_samples: 20

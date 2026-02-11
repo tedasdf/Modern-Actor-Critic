@@ -1,0 +1,22 @@
+program: DDPG/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - DDPG.train
+  - ${args}
+
+method: grid
+metric:
+  name: eval/return_mean
+  goal: maximize
+
+parameters:
+  gamma: 
+    values: [0.98, 0.99]
+  tau:   
+    values: [0.005, 0.01]
+
+
+
+## Higher γ → larger bootstrapped term Larger τ → faster propagation of Q errors

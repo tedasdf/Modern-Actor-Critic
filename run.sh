@@ -1,1 +1,1 @@
-wandb agent arc_agi/Modern-Actor-Critic/7ka4jriu
+wandb agent arc_agi/Modern-Actor-Critic/6r5yh2fk

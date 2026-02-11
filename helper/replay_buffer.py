@@ -3,11 +3,16 @@ import numpy as np
 
 # Structure for the Replay Buffer
 class ReplayBuffer:
-    def __init__(self, capacity, batch_size):
+    def __init__(self, capacity, batch_size, learning_start):
         # Use a deque as it automatically handles max size
         self.buffer = collections.deque(maxlen=capacity)
         self.batch_size = batch_size
+        self.learning_start = learning_start
 
+    @property
+    def size(self):
+        return len(self.buffer)
+    
     def store(self, state, action, reward, next_state, done):
         """Stores a transition tuple in the buffer."""
         # Ensure states are NumPy arrays for consistency
@@ -38,5 +43,5 @@ class ReplayBuffer:
         return len(self.buffer)
 
     def check_length(self):
-        return len(self.buffer) > self.batch_size
+        return len(self.buffer) > self.learning_start
     

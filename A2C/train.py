@@ -86,14 +86,29 @@ def train(envs, cfg, epoch_num, step_num):
             f"actor: {actor_loss:.4f} | "
             f"critic: {critic_loss:.4f}"
         )
-
+        
+        mean_reward = ep_rewards.mean()
+        std_reward = ep_rewards.std()
 
         wandb.log({
+            # Performance
+            "mean_rollout_reward": mean_reward,
+            "mean_reward_per_step": mean_reward / step_num,
+            "std_rollout_reward": std_reward,
+
+            # Losses
             "policy_loss": actor_loss.item(),
             "value_loss": critic_loss.item(),
+
+            # Variance / stability diagnostics
             "advantage_std": adv_std,
-            "pg_variance_proxy": pg_var
+            "pg_std": pg_var,
+
+            # Exploration
+            "entropy": entropy.item(),
+            "entropy_std": entropy_std.item(),
         })
+
 
 
 
