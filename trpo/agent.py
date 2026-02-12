@@ -10,7 +10,7 @@ from helper.neuralnet import GaussianActor, Critic
 
 
 class TRPOagent():
-    def __init__(self, obs_dim, act_dim, hidden_size, gamma, lam, lr, damping , max_kl, n_cg_steps):
+    def __init__(self, obs_dim, act_dim, hidden_size, gamma, lam, lr, damping , max_kl, cg_iters):
         self.damping = damping
         self.max_kl = max_kl
         self.gamma = gamma
@@ -22,7 +22,7 @@ class TRPOagent():
 
         self.critic_op = optim.Adam(self.critic.parameters(), lr=lr)
 
-        self.n_cg_steps = n_cg_steps
+        self.n_cg_steps = cg_iters
 
     def compute_surrogate_loss(self, states, actions, advantages, old_log_probs):
         mu, std = self.actor(states)

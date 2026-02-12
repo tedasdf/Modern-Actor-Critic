@@ -33,9 +33,10 @@ def train(env, cfg, num_epoch, num_steps):
             obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
             action, log_prob = agent.select_action(obs_tensor)
 
-            action = action.detach().cpu().numpy().flatten()
+            env_action = env.action_space.low + (action.detach().numpy() + 1) * 0.5 * (env.action_space.high - env.action_space.low)
+
             # env step
-            next_obs, rew, term, trunc, info = env.step(action)
+            next_obs, rew, term, trunc, info = env.step(env_action)
             done = term or trunc
             agent.rollout.store(obs, action, rew, 1 - done, log_prob)
 

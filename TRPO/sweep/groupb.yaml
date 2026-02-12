@@ -14,7 +14,11 @@ metric:
 
 parameters:
   # Group 3: Optimization / Rollout
-  lr: [1e-4, 3e-4, 1e-3]
-  num_step: [512, 1024, 2048]
-  vf_lr: [1e-3, 3e-3]
-  vf_iters: [5, 10]
+  lr: 
+    values: [1e-4, 3e-4, 1e-3]
+  num_step: 
+    values: [512, 1024, 2048]
+  vf_lr: 
+    values: [1e-3, 3e-3]
+  vf_iters: 
+    values: [5, 10]

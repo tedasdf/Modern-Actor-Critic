@@ -40,10 +40,9 @@ def train(env, num_epoch, num_step, cfg):
             action, log_prob, mu, std = agent.select_action(obs_tensor)
 
             # Convert to numpy and clip
-            action_np = action.detach().cpu().numpy().flatten()
-            action_np = np.clip(action_np, env.action_space.low, env.action_space.high)
+            env_action = env.action_space.low + (action.detach().numpy() + 1) * 0.5 * (env.action_space.high - env.action_space.low)
 
-            next_obs, rew, term, trunc, info = env.step(action_np)
+            next_obs, rew, term, trunc, info = env.step(env_action)
             done = term or trunc
             ep_reward += rew
 

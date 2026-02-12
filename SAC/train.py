@@ -34,11 +34,10 @@ def train(env, cfg, epoch_num, num_step):
             obs_tensor = torch.tensor(obs, dtype=torch.float32).unsqueeze(0)
             action = agent.select_action(obs_tensor)
             
-            action = action.detach().cpu().numpy().flatten()
- 
-            action = np.clip(action * 2.0, env.action_space.low, env.action_space.high)
+            env_action = env.action_space.low + (action.detach().numpy() + 1) * 0.5 * (env.action_space.high - env.action_space.low)
 
-            next_obs, rew, term, trunc, info = env.step(action)
+
+            next_obs, rew, term, trunc, info = env.step(env_action)
             done = term or trunc
             
             agent.replay_buffer.store(obs, action, rew, next_obs, 1- done)
