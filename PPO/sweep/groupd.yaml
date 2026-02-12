@@ -1,0 +1,22 @@
+program: PPO/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - PPO.train
+  - ${args}
+
+method: grid   # You can switch to 'bayes' or 'random' later if you have many combinations
+metric:
+  name: eval/return_mean
+  goal: maximize
+
+parameters:
+  num_step:
+    values: [20, 50, 100]
+  num_epoch:
+    values: [1000, 400, 200]  # matched to num_step for constant total steps
+  minibatch_size:
+    values: [8, 16, 32]
+  num_workers:
+    values: [1, 4, 8]

@@ -2,7 +2,7 @@
 import torch
 import torch.optim as optim
 from helper.rollout import Rollout
-from helper.neuralnet import GuassianActor, Critic
+from helper.neuralnet import GaussianActor, Critic
 import torch.nn.functional as F
 
 class PPOagent():
@@ -15,9 +15,10 @@ class PPOagent():
                  kl_target,
                  act_lr,
                  critic_lr,
-                 lam
+                 lam,
+                 entropy_coef
                  ):
-        self.actor = GuassianActor(obs_dim, act_dim, hidden_dim)
+        self.actor = GaussianActor(obs_dim, act_dim, hidden_dim)
         self.critic = Critic(obs_dim, hidden_dim)
 
         self.actor_op = optim.Adam(self.actor.parameters(), lr=act_lr)
@@ -29,6 +30,7 @@ class PPOagent():
         self.epsilon = epsilon
         self.kl_target = kl_target
         self.lam = lam
+        self.entropy_coef = entropy_coef
 
 
     def select_action(self, obs):
@@ -80,7 +82,6 @@ class PPOagent():
         return torch.min(ratios * advantages, clipped * advantages).mean()
 
     def actor_update(self, states, actions, advantages, old_log_probs, old_mu, old_std):
-        
         mu, std = self.actor(states)
         dist = torch.distributions.Normal(mu, std)
 
@@ -89,17 +90,23 @@ class PPOagent():
         log_probs = dist.log_prob(pre_tanh_action) - torch.log(1 - actions.pow(2) + eps)
         log_probs = log_probs.sum(dim=-1)
         
-        ratios , advantages = self.compute_surrogate_loss(states, actions, advantages, old_log_probs)
+        ratios, advantages = self.compute_surrogate_loss(states, actions, advantages, old_log_probs)
 
+        # KL divergence for adaptive clipping
         if old_mu is not None and old_std is not None:
             with torch.no_grad():
                 old_dist = torch.distributions.Normal(old_mu, old_std)
                 kl = torch.distributions.kl_divergence(old_dist, dist).sum(dim=-1).mean()
         else:
             kl = torch.tensor(0.0)
-        
-        loss = self.loss_adaptive(ratios, advantages, kl)
-    
+
+        # PPO surrogate loss
+        surrogate_loss = self.loss_adaptive(ratios, advantages, kl)
+
+        # Entropy bonus
+        entropy = dist.entropy().sum(dim=-1).mean()
+        loss = surrogate_loss - self.entropy_coef * entropy
+
         self.actor_op.zero_grad()
         (-loss).backward()
         self.actor_op.step()

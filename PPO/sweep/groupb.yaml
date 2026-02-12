@@ -1,0 +1,17 @@
+program: PPO/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - PPO.train
+  - ${args}
+
+method: grid   # You can switch to 'bayes' or 'random' later if you have many combinations
+metric:
+  name: eval/return_mean
+  goal: maximize
+
+parameters:
+  # ===== PPO-specific =====
+  entropy_coef:
+    values: [0.0, 0.01, 0.03, 0.05]

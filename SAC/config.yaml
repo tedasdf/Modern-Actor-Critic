@@ -1,15 +1,20 @@
+# config.yaml
 seed: 42
-num_epoch: 2000
-num_step: 20
+num_epoch: 2000        # total episodes
+num_step: 20           # steps per episode
 env_id: "Pendulum-v1"
+
 agent_continuous:
   _target_: SAC.agent.SACagent
-  hidden_dim: 256
-  alpha: 0.2      # continuous environment
-  gamma: 0.99
-  tau: 0.005
-  act_lr: 3e-4
-  state_lr: 3e-4
-  state_act_lr: 3e-4
-  capacity: 100000
-  batch_size: 16
+  hidden_dim: 256        # hidden layer size
+  gamma: 0.99            # discount factor
+  tau: 0.005             # soft target update
+  act_lr: 3e-4           # actor learning rate
+  state_lr: 3e-4         # state critic learning rate
+  state_act_lr: 3e-4     # state-action critic learning rate
+  capacity: 100000       # replay buffer size
+  batch_size: 16         # batch size for SAC updates
+  alpha: 0.2             # initial entropy coefficient
+  auto_alpha: true       # enable learning alpha dynamically
+  target_entropy: -1.0   # target entropy for Pendulum-v1
+  learning_starts: 1000

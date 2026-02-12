@@ -1,0 +1,19 @@
+program: SAC/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - SAC.train
+  - ${args}
+
+method: grid  # or grid/bayes
+metric:
+  name: mean_return
+  goal: maximize
+
+parameters:
+ # --- Group 3: Entropy Coefficient ---
+  alpha:
+    values: [0.1, 0.2, 0.3]
+  auto_alpha:
+    values: [true, false]

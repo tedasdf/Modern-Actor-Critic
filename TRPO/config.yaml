@@ -11,3 +11,4 @@ agent_continuous:
 
 num_epoch: 1000
 num_step: 1024
+vf_iter: 5

@@ -1,0 +1,20 @@
+program: PPO/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - PPO.train
+  - ${args}
+
+method: grid   # You can switch to 'bayes' or 'random' later if you have many combinations
+metric:
+  name: eval/return_mean
+  goal: maximize
+
+parameters:
+  gamma:
+    values: [0.95, 0.99, 0.995]
+  lam:
+    values: [0.9, 0.95, 0.99]
+  epsilon:
+    values: [0.1, 0.2, 0.3]

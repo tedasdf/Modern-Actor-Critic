@@ -1,0 +1,20 @@
+
+program: SAC/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - SAC.train
+  - ${args}
+
+method: grid  # or grid/bayes
+metric:
+  name: mean_return
+  goal: maximize
+
+parameters:
+  # --- Group 2: Batch Size & Replay Buffer Capacity ---
+  batch_size:
+    values: [16, 64, 128]
+  capacity:
+    values: [50000, 100000, 200000]

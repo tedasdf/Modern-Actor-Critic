@@ -98,20 +98,42 @@ def train(env, num_epoch, num_step, cfg):
 
 
 if __name__ == "__main__":
+    import argparse
+
     cfg = OmegaConf.load("PPO/config.yaml")
 
-    import argparse
+    # ===== Add argparse for all sweepable parameters =====
     parser = argparse.ArgumentParser()
     parser.add_argument("--hidden_dim", type=int)
     parser.add_argument("--act_lr", type=float)
     parser.add_argument("--critic_lr", type=float)
-    parser.add_argument("--seed", type=int)
+    parser.add_argument("--epsilon", type=float)
+    parser.add_argument("--kl_target", type=float)
+    parser.add_argument("--lam", type=float)
+    parser.add_argument("--gamma", type=float)
+    parser.add_argument("--entropy_coef", type=float)
+    parser.add_argument("--num_step", type=int)
+    parser.add_argument("--num_epoch", type=int)
+    parser.add_argument("--minibatch_size", type=int)
+    parser.add_argument("--num_workers", type=int)
+    parser.add_argument("--seed", type=int, default=42)
+
     args = parser.parse_args()
 
-    if args.hidden_dim: cfg.agent_continuous.hidden_dim = args.hidden_dim
-    if args.act_lr: cfg.agent_continuous.act_lr = args.act_lr
-    if args.critic_lr: cfg.agent_continuous.critic_lr = args.critic_lr
-    if args.seed: cfg.seed = args.seed
+    # ===== Apply arguments to config if provided =====
+    if args.hidden_dim:        cfg.agent_continuous.hidden_dim = args.hidden_dim
+    if args.act_lr:            cfg.agent_continuous.act_lr = args.act_lr
+    if args.critic_lr:         cfg.agent_continuous.critic_lr = args.critic_lr
+    if args.epsilon:           cfg.agent_continuous.epsilon = args.epsilon
+    if args.kl_target:         cfg.agent_continuous.kl_target = args.kl_target
+    if args.lam:               cfg.agent_continuous.lam = args.lam
+    if args.gamma:             cfg.agent_continuous.gamma = args.gamma
+    if args.entropy_coef:      cfg.agent_continuous.entropy_coef = args.entropy_coef
+    if args.num_step:          cfg.num_step = args.num_step
+    if args.num_epoch:         cfg.num_epoch = args.num_epoch
+    if args.minibatch_size:    cfg.minibatch_size = args.minibatch_size
+    if args.num_workers:       cfg.num_workers = args.num_workers
+    if args.seed:              cfg.seed = args.seed
 
     torch.manual_seed(cfg.seed)
     np.random.seed(cfg.seed)

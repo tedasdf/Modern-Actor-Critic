@@ -1,0 +1,21 @@
+program: SAC/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - SAC.train
+  - ${args}
+
+method: grid  # or grid/bayes
+metric:
+  name: mean_return
+  goal: maximize
+
+parameters:
+  # --- Group 1: Actor & Critic Learning Rates ---
+  act_lr:
+    values: [1e-4, 3e-4, 1e-3]
+  state_lr:
+    values: [3e-4, 1e-3, 3e-3]
+  state_act_lr:
+    values: [3e-4, 1e-3, 3e-3]

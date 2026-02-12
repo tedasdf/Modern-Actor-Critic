@@ -12,7 +12,7 @@ import wandb
 def train(env, cfg, epoch_num, num_step):
 
     wandb.init(
-        project="SAC_experiment",  # your project name
+        project="RL_experiment",  # your project name
         config=OmegaConf.to_container(cfg, resolve=True)
     )
    
@@ -75,7 +75,8 @@ def train(env, cfg, epoch_num, num_step):
                 "reward": ep_reward,
                 "V_loss": v_loss.item() if isinstance(v_loss, torch.Tensor) else v_loss,
                 "Q_loss": q_loss.item() if isinstance(q_loss, torch.Tensor) else q_loss,
-                "Policy_loss": policy_loss.item() if isinstance(policy_loss, torch.Tensor) else policy_loss
+                "Policy_loss": policy_loss.item() if isinstance(policy_loss, torch.Tensor) else policy_loss,
+                "alpha": agent.get_alpha().item() if getattr(agent, "auto_alpha", False) else agent.alpha
             })
 
             print(f"Epoch {epoch+1}/{epoch_num} | Reward: {ep_reward:.2f} | "

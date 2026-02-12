@@ -1,0 +1,20 @@
+
+program: TRPO/train.py
+program: -m
+command:
+  - C:\Users\teeds\Documents\GitHub\empty\Modern-Actor-Critic\.remake\Scripts\python.exe
+  - -m
+  - TRPO.train
+  - ${args}
+
+method: grid  # or grid/bayes
+metric:
+  name: mean_return
+  goal: maximize
+
+parameters:
+  # Group 3: Optimization / Rollout
+  lr: [1e-4, 3e-4, 1e-3]
+  num_step: [512, 1024, 2048]
+  vf_lr: [1e-3, 3e-3]
+  vf_iters: [5, 10]

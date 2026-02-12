@@ -52,7 +52,8 @@ def train(env, cfg, num_epoch, num_steps):
         actual_improve, expected_improve, success = agent.actor_update(states, actions, advantages, old_log_probs)
 
         # Update critic
-        vf_loss = agent.critic_update(states, targets)
+        for _ in range(cfg.vf_iter):
+            vf_loss = agent.critic_update(states, targets)
 
         agent.rollout.clear()
         wandb.log({
@@ -67,7 +68,7 @@ def train(env, cfg, num_epoch, num_steps):
                   f"Critic Loss: {vf_loss:.4f} =")
 
     env.close()
-    wandb.finsih()
+    wandb.finish()
 
 if __name__ == "__main__":
     cfg = OmegaConf.load('TRPO\config.yaml')
@@ -79,19 +80,43 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
+    # Policy / network
     parser.add_argument("--hidden_size", type=int)
-    parser.add_argument("--lr", type=float)
+
+    # TRPO trust region
     parser.add_argument("--max_kl", type=float)
+    parser.add_argument("--damping", type=float)
+    parser.add_argument("--cg_iters", type=int)
+
+    # Optimization / rollout
+    parser.add_argument("--lr", type=float)
+    parser.add_argument("--num_step", type=int)
+    parser.add_argument("--vf_lr", type=float)
+    parser.add_argument("--vf_iters", type=int)
+
+    # Seed
     parser.add_argument("--seed", type=int)
+
     args = parser.parse_args()
 
-    if args.hidden_size:
+    # Override config values if arguments are provided
+    if args.hidden_size is not None:
         cfg.agent_continuous.hidden_size = args.hidden_size
-    if args.lr:
-        cfg.agent_continuous.lr = args.lr
-    if args.max_kl:
+    if args.max_kl is not None:
         cfg.agent_continuous.max_kl = args.max_kl
-    if args.seed:
+    if args.damping is not None:
+        cfg.agent_continuous.damping = args.damping
+    if args.cg_iters is not None:
+        cfg.agent_continuous.cg_iters = args.cg_iters
+    if args.lr is not None:
+        cfg.agent_continuous.lr = args.lr
+    if args.num_step is not None:
+        cfg.num_step = args.num_step          # rollout length
+    if args.vf_lr is not None:
+        cfg.agent_continuous.vf_lr = args.vf_lr
+    if args.vf_iters is not None:
+        cfg.vf_iter = args.vf_iters           # number of value function updates
+    if args.seed is not None:
         cfg.seed = args.seed
 
 

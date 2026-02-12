@@ -5,22 +5,24 @@ import torch.optim as optim
 from helper.rollout import Rollout
 from TRPO.utility import conjugate_gradient, flat_grad, get_flat_params, line_search, set_flat_params
 import torch.nn.functional as F
-from helper.neuralnet import GuassianActor, Critic
+from helper.neuralnet import GaussianActor, Critic
 
 
 
 class TRPOagent():
-    def __init__(self, obs_dim, act_dim, hidden_size, gamma, lam, lr, damping , max_kl):
+    def __init__(self, obs_dim, act_dim, hidden_size, gamma, lam, lr, damping , max_kl, n_cg_steps):
         self.damping = damping
         self.max_kl = max_kl
         self.gamma = gamma
         self.lam = lam
         self.rollout = Rollout()
 
-        self.actor = GuassianActor(obs_dim, act_dim, hidden_size)
+        self.actor = GaussianActor(obs_dim, act_dim, hidden_size)
         self.critic = Critic(obs_dim, hidden_size)
 
         self.critic_op = optim.Adam(self.critic.parameters(), lr=lr)
+
+        self.n_cg_steps = n_cg_steps
 
     def compute_surrogate_loss(self, states, actions, advantages, old_log_probs):
         mu, std = self.actor(states)
@@ -48,13 +50,13 @@ class TRPOagent():
         action, log_prob, _ = self.actor.sample(obs)
         return action, log_prob
 
-    def actor_update(self, states, actions, advantages, old_log_probs, n_cg_steps=10):
+    def actor_update(self, states, actions, advantages, old_log_probs):
         old_loss = self.compute_surrogate_loss(states, actions, advantages, old_log_probs)
         g = flat_grad(old_loss, self.actor).detach()
 
         prev_params = get_flat_params(self.actor)
         old_mu, old_std = self.actor(states)
-        step_dir = conjugate_gradient(lambda v: self.fisher_vector_product(v, states, old_mu, old_std), g, n_steps=n_cg_steps)
+        step_dir = conjugate_gradient(lambda v: self.fisher_vector_product(v, states, old_mu, old_std), g, n_steps=self.n_cg_steps)
         
         shs = 0.5 * torch.dot(step_dir, self.fisher_vector_product(step_dir, states, old_mu, old_std))
         step_size = torch.sqrt(self.max_kl / shs)

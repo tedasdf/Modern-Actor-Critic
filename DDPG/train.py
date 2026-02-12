@@ -116,8 +116,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
 
     # ===== Optimization =====
-    parser.add_argument("--lr_actor", type=float)
-    parser.add_argument("--lr_critic", type=float)
+    parser.add_argument("--actor_lr", type=float)
+    parser.add_argument("--critic_lr", type=float)
     parser.add_argument("--batch_size", type=int)
 
     # ===== Network =====
@@ -158,8 +158,8 @@ if __name__ == "__main__":
     cfg = OmegaConf.load("DDPG/config.yaml")
 
     # ===== Optimization =====
-    apply_override(args.lr_actor, lambda v: setattr(cfg.agent_continuous, "actor_lr", v))
-    apply_override(args.lr_critic, lambda v: setattr(cfg.agent_continuous, "critic_lr", v))
+    apply_override(args.actor_lr, lambda v: setattr(cfg.agent_continuous, "actor_lr", v))
+    apply_override(args.critic_lr, lambda v: setattr(cfg.agent_continuous, "critic_lr", v))
     apply_override(args.batch_size, lambda v: setattr(cfg.agent_continuous, "batch_size", v))
 
     # ===== Network =====
