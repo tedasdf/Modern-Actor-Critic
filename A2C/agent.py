@@ -25,7 +25,6 @@ class A2Cagent():
         self.critic_weight = critic_weight
         self.entropy_weight = entropy_weight
 
-
     def select_action(self, obs):
         action, log_prob, entropy = self.actor.sample(obs)
         
@@ -62,9 +61,6 @@ class A2Cagent():
             adv_std.item(),
             pg_variance.item()
         )
-
-
-    
 
     def update(self, actor_loss, critic_loss, entropy):
 
